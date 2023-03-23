@@ -1,0 +1,28 @@
+{
+  "manifest_version": 3,
+  "name": "Brokerage Mask",
+  "description": "Conceals the value of your brokerage accounts so that you can share your screen without shame.",
+  "version": "1.0",
+  "action": {
+    "default_popup": "popUp.html",
+    "default_icon": {
+      "16": "icons/banditMask.png",
+      "48": "icons/banditMask.png",
+      "128": "icons/banditMask.png"
+    }
+  },
+  "content_scripts": [
+    {
+      "matches": ["*://*.fidelity.com/*"],
+      "js": ["fidelity.js"]
+    }
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "permissions": [
+    "storage",
+    "tabs",
+    "activeTab"
+  ]
+}
