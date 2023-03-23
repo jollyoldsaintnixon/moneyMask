@@ -6,9 +6,9 @@
   "action": {
     "default_popup": "popUp.html",
     "default_icon": {
-      "16": "icons/banditMask.png",
-      "48": "icons/banditMask.png",
-      "128": "icons/banditMask.png"
+      "16": "icons/noMatch-16.png",
+      "48": "icons/noMatch-48.png",
+      "128": "icons/noMatch-128.png"
     }
   },
   "content_scripts": [
