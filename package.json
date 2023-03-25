@@ -1,0 +1,24 @@
+{
+  "name": "money_mask",
+  "version": "1.0.0",
+  "description": "Hide the true value of your security assets on certain brokerage accounts",
+  "main": "background.js",
+  "scripts": {
+    "build": "webpack --config webpack/webpack.prod.js",
+    "dev": "webpack --config webpack/webpack.dev.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jollyoldsaintnixon/moneyMask.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/jollyoldsaintnixon/moneyMask/issues"
+  },
+  "homepage": "https://github.com/jollyoldsaintnixon/moneyMask#readme",
+  "devDependencies": {
+    "webpack": "^5.76.3",
+    "webpack-cli": "^5.0.1"
+  }
+}

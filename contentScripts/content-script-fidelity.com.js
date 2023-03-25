@@ -1,4 +1,5 @@
-import SummarySidebarWidget from "./SummarySidebarWidget.js";
+import SummarySidebarWidget from "../fidelity/SummarySidebarWidget.js";
+console.log("hey there")
 // (async () => {
 //   const src = chrome.extension.getURL('fidelity/fidelityMain.js');
 //   const contentScript = await import(src);
