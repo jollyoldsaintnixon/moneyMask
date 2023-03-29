@@ -1,6 +1,7 @@
 import { 
     arrayToList,
-    toDollars
+    toDollars,
+    dollarsToFloat,
  } from "../helpers";
 
 export default class FidelityWidgetBase 
@@ -11,16 +12,24 @@ export default class FidelityWidgetBase
     }
 
     maskValue = 100;
-    targetNodeList = arrayToList([]); 
-    searchedNodeList = document.querySelectorAll('body'); // a bit hacky here...
-    targetedNodesSelector = document.querySelectorAll('body'); // * Overwrite in child. a bit hacky here...
-    searchingObserver;
-    targetedObserver;
+    maskActivated = false;
 
-    constructor(maskValue = 100) 
+    originalValuesSaved = false;
+
+    targetNodeList = arrayToList([]); 
+    targetedNodesSelector = document.querySelectorAll('body'); // * Overwrite in child. a bit hacky here...
+    // afterEffectsSelectors = []; // an array of selector strings corresponding to each after effect. update in child classes.
+    // afterEffectsNodeLists = []; // an array of node lists that need to be updated after the mask is applied. filled when targets are first found.
+    searchedNodeList = document.querySelectorAll('body'); // a bit hacky here...
+
+    searchingObserver; // runs until targets found
+    targetedObserver; // only watches targets
+
+    constructor(maskValue = 100, maskActivated = false) 
     {
         console.log("widget constuctor")
         this.maskValue = maskValue;
+        this.maskActivated = maskActivated;
         this.activateSearchingObserver();
     }
 
@@ -37,22 +46,95 @@ export default class FidelityWidgetBase
         this.maskValue = maskValue;
         this.maskUp();
     }
+
+    updateMaskActivated(maskActivated)
+    {
+        this.maskActivated = maskActivated;
+        if (maskActivated)
+        {
+            this.maskUp();
+        }
+        else
+        {
+            this.restoreOriginalValues();
+        }
+    }
     
     /**
-     * The central logic behind concealing the monetary value.
+     * The central logic behind concealing the monetary value. Saves the node's
+     * original value in the node's data attribute, then replaces the textContent
      */
     maskUp()
     {
         console.log("widget maskUp")
+        // we only want to change things if the mask if activated
+        if (!this.maskActivated)
+        {
+            return;
+        }
+        if (!this.originalValuesSaved)
+        {
+            this.saveOriginalValues();
+        }
         for (const ele of this.targetNodeList)
         {
             ele.textContent = toDollars(this.maskValue);
         }
+        this.afterEffects();
     }
 
+    /**
+     * Disconnects ann observers.
+     */
     deactivate()
     {
-        this.targetedObserver.disconnect(); // ? does this truly get rid of it?
+        if (this.searchingObserver)
+        {
+            this.searchingObserver.disconnect();
+        }
+        if (this.targetedObserver)
+        {
+            this.targetedObserver.disconnect();
+        }
+    }
+
+    /**
+     * Saves the original values of the target nodes in the node's data attribute.
+     * Used when masking/demasking
+     * 
+     * @param {NodeList} nodeList
+     */
+    saveOriginalValues()
+    {
+        // const nodeLists = [this.targetNodeList].concat(this.afterEffectsNodeLists); // array of NodeLists
+        // for (const nodeList of nodeLists) // NodeList
+        // {
+        if (this.targetNodeList.length)
+        {
+            for (const ele of this.targetNodeList) // Node
+            {
+                ele.setAttribute('data-original-value', ele.textContent);
+            }
+            this.originalValuesSaved = true;
+        }
+        // }
+    }
+
+    /**
+     * Restore the original values of the target nodes.
+     * Used when masking/demasking.
+     */
+    restoreOriginalValues()
+    {
+        // const nodeLists = [this.targetNodeList].concat(this.afterEffectsNodeLists);
+        // for (const nodeList of nodeLists)
+        // {
+        for (const ele of this.targetNodeList)
+        {
+            ele.textContent = ele.dataset.originalValue;
+        }
+        this.afterEffects();
+        // }
     }
 
     /**
@@ -61,6 +143,7 @@ export default class FidelityWidgetBase
      * the unmasked monetary value; once that element is loaded, it should deactivate.
      * Monitoring then passes to the targetedObserver, which only watches the 
      * specific elements we care about.
+     * ?  could we simply change the searchedNodeList to the targetNodeList?
      */
     activateSearchingObserver() 
     {
@@ -73,6 +156,8 @@ export default class FidelityWidgetBase
                     && this.getTargetNodes(mutation.addedNodes).length // checks for the targetNodes each time
                 ) 
                 {
+                    // this.fillAfterEffectsList();
+                    this.saveOriginalValues()
                     this.maskUp();
                     this.activateTargetedObserver();
                     this.searchingObserver.disconnect();
@@ -91,6 +176,7 @@ export default class FidelityWidgetBase
                 if (!this.internalUpdate(mutation) && 
                     (mutation.type === 'childList' || mutation.type === 'subtree')) 
                 {
+                    this.saveOriginalValues();
                     this.maskUp();
                 }
             }
@@ -136,16 +222,34 @@ export default class FidelityWidgetBase
             if (node.nodeType === Node.ELEMENT_NODE && node.querySelectorAll(this.targetedNodesSelector).length)
             {
                 this.targetNodeList = node.querySelectorAll(this.targetedNodesSelector);
+                // this.fillAfterEffectsList();
                 break;
             }
         }
         return this.targetNodeList;
     }
 
-    // static name()
-    // {
-    //     return this.name + "_";
-    // }
+    /**
+     * Trigger any after/secondary effects here. This should be overwritten in child classes.
+     * Effects should be determined by values in targetNodeList.
+     * @returns {void}
+     */
+    afterEffects()
+    {
+        return;
+    }
+
+    /**
+     * Convert the old fraction to a amount based on the mask value.
+     * @param {string} totalDollars the original total
+     * @param {string} proportionDollars the fraction of the totalDollars
+     * @returns 
+     */
+    makeProportions(totalDollars, proportionDollars)
+    {
+        const proportion = dollarsToFloat(proportionDollars) / dollarsToFloat(totalDollars);
+        return toDollars(this.maskValue * proportion);
+    }
 
     static createObserver(nodeList, observerCallBack)
     {

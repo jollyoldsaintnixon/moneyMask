@@ -47,3 +47,13 @@ export function toDollars(value)
     });
     return formatter.format(value);
 }
+
+/**
+ * 
+ * @param {string} dollars 
+ * @returns 
+ */
+export function dollarsToFloat(dollars)
+{
+    return parseFloat(dollars.replace(/[^0-9.-]+/g,""));
+}
