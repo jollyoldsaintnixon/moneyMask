@@ -18,18 +18,18 @@ export function arrayToList(nodeArray)
     };
 }
 
-export function createObserver(nodeList, observerCallBack)
-{
-    console.log("widget createObserver")
-    const observer = new MutationObserver(observerCallBack);
+// export function createObserver(nodeList, observerCallBack)
+// {
+//     console.log("widget createObserver")
+//     const observer = new MutationObserver(observerCallBack);
 
-    for (const node of nodeList)
-    {
-        observer.observe(node, FidelityWidgetBase.observerConfig);
-    }
+//     for (const node of nodeList)
+//     {
+//         observer.observe(node, FidelityWidgetBase.observerConfig);
+//     }
 
-    return observer;
-}
+//     return observer;
+// }
 
 /**
  * 

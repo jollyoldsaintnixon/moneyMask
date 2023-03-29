@@ -1,89 +1,58 @@
-import SummarySidebarWidget from "../fidelity/SummarySidebarWidget.js";
-console.log("hey there")
-// (async () => {
-//   const src = chrome.extension.getURL('fidelity/fidelityMain.js');
-//   const contentScript = await import(src);
-//   contentScript.main();
-// })();
-function main()
-{
-  console.log("on fidelityContentScript")
-  document.addEventListener('DOMContentLoaded', () => {
-    console.log('doc loaded')
-    const widgets = [
-      new SummarySidebarWidget(getMaskValue()),
-    ];
-    // changeText();
-    // observeDOMChanges();
-  });
-}
-// let count = 0;
-// function changeText() {
-//   console.log("count: ", ++count);
-//   const divs = document.querySelectorAll('[class$="_acct-balance"]');
-//   const maskValue = getMaskValue(); // memoize outside of for loop
-//   for (const div of divs) {
-//     const spans = div.getElementsByTagName('span');
-//     console.log("in div")
-//     if (spans.length >= 2) {
-//       // remove old mutation observer and replace with a new one that only triggers on the appropriate spans
-//       console.log("in span")
-//       // const maskValue = chrome.storage.sync.get('selectedValue').then(data => data.selectedValue ?? 1)
-//       spans[1].textContent = maskValue; 
-//     }
-//   }
-// }
+// import SummarySidebarWidget from "../domains/fidelity/SummarySidebarWidget.js";
+// import WidgetSearcher from "../domains/WidgetSearcher.js";
+import WidgetController from "../domains/WidgetController.js";
+import FIDELITY_WIDGET_MAP from "../domains/fidelity/FidelityWidgetMap.js";
 
-function getMaskValue() {
+if (document.readyState === 'loading') 
+{
+  document.addEventListener('DOMContentLoaded', onDocumentLoaded);
+} 
+else 
+{
+  onDocumentLoaded();
+}
+
+async function onDocumentLoaded() 
+{
+  chrome.runtime.sendMessage({ type: 'contentScriptReady' }); // let the background script know that we are up and running (and can thus receive messages)
+  console.log('doc loaded');
+  const maskValue = await getInitialMaskValue();
+  // const controller = setUpController(maskValue);
+  setUpController(maskValue);
+
+  // const widgets = [
+  //   new SummarySidebarWidget(maskValue),
+  // ];
+
+  // setUpSearcher(new WidgetSearcher(widgets), maskValue);
+}
+
+function getInitialMaskValue() 
+{
   return chrome.storage.sync.get('selectedValue').then(data => data.selectedValue ?? 1);
 }
 
-// // Run the function after the DOM has loaded
-// if (document.readyState === 'loading') {
-//   console.log('1')
-//   document.addEventListener('DOMContentLoaded', changeText);
-// } else {
-//   console.log('2')
-//   changeText();
+// function setUpSearcher(widgetSearcher, maskValue)
+// {
+//   chrome.webNavigation.onHistoryStateUpdated.addListener(details => {
+//     const url = new URL(details.url);
+//     const path = url.pathname;
+//   })
 // }
 
-
-// function observeDOMChanges() {
-//   const observer = new MutationObserver((mutations) => {
-//     for (const mutation of mutations) {
-//       if (mutation.type === 'childList' || mutation.type === 'subtree') {
-//         changeText();
-//         break;
-//       }
-//     }
-//   });
-
-//   const observerConfig = {
-//     childList: true,
-//     subtree: true,
-//   };
-
-//   observer.observe(document.body, observerConfig);
-// }
-
-// run the function after the DOM has loaded
-// if (document.readyState === 'loading') {
-//   document.addEventListener('DOMContentLoaded', () => {
-//     // changeText();
-//     // observeDOMChanges();
-//   });
-// } else {
-  // changeText();
-  // observeDOMChanges();
-// }
-
-// document.addEventListener('DOMContentLoaded', () => {
-//   const widgets = [
-//     new SummarySidebarWidget(getMaskValue()),
-//   ];
-//   // changeText();
-//   // observeDOMChanges();
-// });
-
-  "acct-selector__all-accounts-balance" // total for all accounts
-  "acct-selector__acct-balance" // specific account, it's a div and the actual balance is the second span
+function setUpController(maskValue)
+{
+  const controller = new WidgetController(maskValue, FIDELITY_WIDGET_MAP);
+  chrome.runtime.onMessage.addListener(message => {
+    if (message.type === 'maskUpdate')
+    {
+      controller.updateMaskValue(message.value);
+    }
+    else if(message.type === 'pathUpdate')
+    {
+      controller.loadWidgets(message.value)
+    }
+  })
+  controller.loadWidgets(window.location.href);
+  // return controller;
+}
