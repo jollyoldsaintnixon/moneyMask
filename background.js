@@ -4,13 +4,14 @@ chrome.tabs.onActivated.addListener(handleTabActivated);
 chrome.storage.onChanged.addListener(handleMaskValueChange);
 chrome.webNavigation.onHistoryStateUpdated.addListener(details => urlUpdate(details.url));
 chrome.runtime.onMessage.addListener(contentIsScriptReady);
+chrome.runtime.onMessage.addListener(maskActivated)
 
 const targetDomainRegexList = [ // domains that the extension runs on
     'fidelity.com',
     'robinhood.com',
 ].map(domain => new RegExp(`^https?://([a-zA-Z0-9-]+\.)?${escapeRegExp(domain)}`));
 
-const tabsWithContentScript = new Set();
+const tabsWithContentScript = new Set(); // used for tracking witch tabs are running content scripts that are ready to receive messages
 
 /**
  * Update the icon to reflect wheter or not the user is on a page where the extension is
@@ -19,25 +20,22 @@ const tabsWithContentScript = new Set();
  * @param {*} tab 
  */
 function updateIcon(tab) {
-    // test for a pattern match
-    let iconFileBase;
-    console.log("tab.url: ", tab.url)
-    if (isDomainSupported(tab.url)) {
-        iconFileBase = "icons/banditMask" // match
-    }
-    else {
-        iconFileBase = "icons/noMatch" // no match
-    }
-
-    // set icon
-    chrome.action.setIcon({
-        path: {
-            '16': iconFileBase + "-16.png",
-            '48': iconFileBase + "-48.png",
-            '128': iconFileBase + "-128.png",
-        },
-        tabId: tab.id
-    })
+    // test for a domain pattern match in the url
+    const iconFileBase = isDomainSupported(tab.url) ?  "icons/banditMask" : "icons/noMatch";
+    // check if maksActivated is true
+    chrome.storage.sync.get('maskActivated', function(data) 
+    {
+        const active = data.maskActivated ? "Active" : "Inactive";
+        // set icon
+        chrome.action.setIcon({
+            path: {
+                '16': iconFileBase + active + "-16.png",
+                '48': iconFileBase + active + "-48.png",
+                '128': iconFileBase + active +  "-128.png",
+            },
+            tabId: tab.id
+        })
+    });
 }
 
 /**
@@ -143,4 +141,20 @@ function urlUpdate(url)
 function isDomainSupported(url)
 {
     return targetDomainRegexList.some(regex => regex.test(url));
+}
+
+/**
+ * Change the icon when mask is activated/deactivated
+ */
+function maskActivated(request, sender)
+{
+    // update the icon. technically this means we are querying the storage twice
+    if (request.type === 'maskActivated')
+    {
+        console.log("HEHEHHEHEHEHEHHEHE")
+        chrome.tabs.query({ active: true, currentWindow: true, }, (tabs) => {
+            updateIcon(tabs[0]);
+            sendMessageToContentScript(tabs[0].id, { type: 'maskActivated', value: request.value, })
+        });
+    }
 }

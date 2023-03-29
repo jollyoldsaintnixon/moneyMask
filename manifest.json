@@ -6,9 +6,9 @@
   "action": {
     "default_popup": "popUp.html",
     "default_icon": {
-      "16": "icons/noMatch-16.png",
-      "48": "icons/noMatch-48.png",
-      "128": "icons/noMatch-128.png"
+      "16": "icons/noMatchInactive-16.png",
+      "48": "icons/noMatchInactive-48.png",
+      "128": "icons/noMatchInactive-128.png"
     }
   },
   "content_scripts": [

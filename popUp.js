@@ -1,3 +1,4 @@
+// this page is used to generate the content of popUp.html
 console.log('hello')
 
 document.addEventListener('DOMContentLoaded', function() {
@@ -5,6 +6,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // Grab the root at top level
     const root = document.querySelector('#root');
 
+    initiateToggle();
     initiateBannerText();
     initiateSelectElement();
 
@@ -29,17 +31,17 @@ document.addEventListener('DOMContentLoaded', function() {
     
         // Save the user's selection
         selectElement.addEventListener('change', function(e) {
-            chrome.storage.sync.set({ 'selectedValue': e.target.value }, function() {
+            chrome.storage.sync.set({ 'maskValue': e.target.value }, function() {
             console.log('Value saved:', e.target.value);
             });
         });
     
         // Retrieve and set the saved value when the popup is opened
-        chrome.storage.sync.get('selectedValue', function(data) {
+        chrome.storage.sync.get('maskValue', function(data) {
             console.log('looking for default value')
-            if (data.selectedValue) {
-                selectElement.value = data.selectedValue;   
-                console.log('default value: ', data.selectedValue);
+            if (data.maskValue) {
+                selectElement.value = data.maskValue;   
+                console.log('default value: ', data.maskValue);
             }
         });
 
@@ -69,5 +71,57 @@ document.addEventListener('DOMContentLoaded', function() {
                 selectElement.appendChild(option);
             });
         }
+    }
+
+    /**
+     * This function should generate a toggle button. The toggle will be used 
+     * to turn the extension on and off.
+     * * Nested within docready function
+     */
+    function initiateToggle()
+    {
+        // set up toggle element
+        const toggleButton = document.createElement('button');
+        toggleButton.classList.add('toggle-button');
+        root.appendChild(toggleButton);
+
+        // Retrieve and set the saved value when the popup is opened
+        chrome.storage.sync.get('maskActivated', function(data) 
+        {
+            console.log('restoring default mask activation')
+            if (data.maskActivated) 
+            {
+                console.log('mask was active');
+                toggleButton.classList.add('toggle-active');
+                toggleButton.textContent = "Unmask";
+            }
+            else
+            {
+                console.log('mask was inactive');
+                toggleButton.classList.remove('toggle-active');
+                toggleButton.textContent = "Mask Up";
+            }
+        });
+
+        // handle click logic
+        toggleButton.addEventListener('click', function() 
+        {
+            toggleButton.classList.toggle('toggle-active');
+            let maskActivated;
+            if (toggleButton.classList.contains('toggle-active')) // we just turned it on
+            {
+                toggleButton.textContent = "Unmask";
+                maskActivated = true;
+            } 
+            else // we just turned it off
+            {
+                toggleButton.textContent = "Mask Up";
+                maskActivated = false;
+            }
+            // save the value and send a message
+            chrome.storage.sync.set({ 'maskActivated': maskActivated}, function() {
+                chrome.runtime.sendMessage({ type: 'maskActivated', value: maskActivated });
+            });
+        });
     }
 });
