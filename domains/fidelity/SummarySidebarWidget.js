@@ -17,7 +17,7 @@ export default class SummarySidebarWidget extends FidelityWidgetBase
         let total = 0;
         for (const node of this.targetNodeList)
         {
-            total += this.maskActivated ? parseFloat(this.maskValue) : this.dollarsToFloat(node.dataset.originalValue); // add up the total based on whether or not mask is up
+            total += this.isMaskOn ? parseFloat(this.maskValue) : this.dollarsToFloat(node.dataset.originalValue); // add up the total based on whether or not mask is up
 
             // handle gain/loss for each account
             const originalNodeDollars = node.dataset.originalValue;

@@ -14,12 +14,12 @@ else
 
 async function onDocumentLoaded() 
 {
-  chrome.runtime.sendMessage({ type: 'contentScriptReady' }); // let the background script know that we are up and running (and can thus receive messages)
   console.log('doc loaded');
+  sendMessageToBackgroundScript(); // let the background script know that we are up and running (and can thus receive messages)
   const maskValue = await getInitialMaskValue();
-  const maskActivated = await getInitialMaskActivated();
+  const isMaskOn = await getInitialMaskActivated();
   // const controller = setUpController(maskValue);
-  setUpController(maskValue, maskActivated);
+  setUpController(maskValue, isMaskOn);
 
   // const widgets = [
   //   new SummarySidebarWidget(maskValue),
@@ -35,12 +35,12 @@ function getInitialMaskValue()
 
 function getInitialMaskActivated()
 {
-  return chrome.storage.sync.get('maskActivated').then(data => data.maskActivated ?? true);
+  return chrome.storage.sync.get('isMaskOn').then(data => data.isMaskOn ?? true);
 }
 
-function setUpController(maskValue, maskActivated)
+function setUpController(maskValue, isMaskOn)
 {
-  const controller = new WidgetController(maskValue, maskActivated, FIDELITY_WIDGET_MAP);
+  const controller = new WidgetController(maskValue, isMaskOn, FIDELITY_WIDGET_MAP);
   chrome.runtime.onMessage.addListener(message => {
     if (message.type === 'maskUpdate')
     {
@@ -50,11 +50,40 @@ function setUpController(maskValue, maskActivated)
     {
       controller.loadWidgets(message.value)
     }
-    else if(message.type === "maskActivated")
+    else if(message.type === "isMaskOn")
     {
       controller.updateMaskActivated(message.value);
     }
   })
   controller.loadWidgets(window.location.href);
   // return controller;
+}
+
+/**
+ * Lets the background script know that this content script is ready to receive messages. 
+ * Retries up to 5 times if the background script doesn't respond.
+ * @param {int} retryCount 
+ */
+function sendMessageToBackgroundScript(retryCount = 0) {
+    const maxRetries = 5;
+    const retryDelay = 500
+    // Send the "ready" message to the background script
+    chrome.runtime.sendMessage({ type: 'contentScriptReady' }, (response) => {
+      if (chrome.runtime.lastError || !response || !response.acknowledged) 
+      {
+        // If there's an error, no response, or the response doesn't have the expected property, retry
+        if (retryCount < maxRetries) 
+        {
+          setTimeout(() => sendMessageToBackgroundScript(++retryCount), retryDelay);
+        } 
+        else 
+        {
+          console.warn('Failed to establish connection with background script after', maxRetries, 'attempts');
+        }
+      } 
+      else 
+      {
+        console.log('Connection with background script established');
+      }
+    });
 }

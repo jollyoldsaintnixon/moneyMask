@@ -12,7 +12,7 @@ export default class FidelityWidgetBase
     }
 
     maskValue = 100;
-    maskActivated = false;
+    isMaskOn = false;
 
     originalValuesSaved = false;
 
@@ -25,11 +25,11 @@ export default class FidelityWidgetBase
     searchingObserver; // runs until targets found
     targetedObserver; // only watches targets
 
-    constructor(maskValue = 100, maskActivated = false) 
+    constructor(maskValue = 100, isMaskOn = false) 
     {
         console.log("widget constuctor")
         this.maskValue = maskValue;
-        this.maskActivated = maskActivated;
+        this.isMaskOn = isMaskOn;
         this.activateSearchingObserver();
     }
 
@@ -47,10 +47,10 @@ export default class FidelityWidgetBase
         this.maskUp();
     }
 
-    updateMaskActivated(maskActivated)
+    updateMaskActivated(isMaskOn)
     {
-        this.maskActivated = maskActivated;
-        if (maskActivated)
+        this.isMaskOn = isMaskOn;
+        if (isMaskOn)
         {
             this.maskUp();
         }
@@ -68,7 +68,7 @@ export default class FidelityWidgetBase
     {
         console.log("widget maskUp")
         // we only want to change things if the mask if activated
-        if (!this.maskActivated)
+        if (!this.isMaskOn)
         {
             return;
         }

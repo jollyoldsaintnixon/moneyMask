@@ -86,10 +86,10 @@ document.addEventListener('DOMContentLoaded', function() {
         root.appendChild(toggleButton);
 
         // Retrieve and set the saved value when the popup is opened
-        chrome.storage.sync.get('maskActivated', function(data) 
+        chrome.storage.sync.get('isMaskOn', function(data) 
         {
             console.log('restoring default mask activation')
-            if (data.maskActivated) 
+            if (data.isMaskOn) 
             {
                 console.log('mask was active');
                 toggleButton.classList.add('toggle-active');
@@ -107,21 +107,22 @@ document.addEventListener('DOMContentLoaded', function() {
         toggleButton.addEventListener('click', function() 
         {
             toggleButton.classList.toggle('toggle-active');
-            let maskActivated;
+            let isMaskOn;
             if (toggleButton.classList.contains('toggle-active')) // we just turned it on
             {
                 toggleButton.textContent = "Unmask";
-                maskActivated = true;
+                isMaskOn = true;
             } 
             else // we just turned it off
             {
                 toggleButton.textContent = "Mask Up";
-                maskActivated = false;
+                isMaskOn = false;
             }
             // save the value and send a message
-            chrome.storage.sync.set({ 'maskActivated': maskActivated}, function() {
-                chrome.runtime.sendMessage({ type: 'maskActivated', value: maskActivated });
-            });
+            // chrome.storage.sync.set({ 'isMaskOn': isMaskOn}, function() {
+            //     chrome.runtime.sendMessage({ type: 'isMaskOn', value: isMaskOn });
+            // });
+            chrome.storage.sync.set({ 'isMaskOn': isMaskOn});
         });
     }
 });

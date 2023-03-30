@@ -7,14 +7,14 @@ export default class WidgetController
     WIDGET_MAP = {}; // regex path => arrays of widget class names
     widgetSearcher;
     maskValue;
-    maskActivated;
+    isMaskOn;
 
-    constructor(maskValue, maskActivated, WIDGET_MAP = {})
+    constructor(maskValue, isMaskOn, WIDGET_MAP = {})
     {
         console.log('in the controller constructor');
         this.maskValue = maskValue;
         this.WIDGET_MAP = WIDGET_MAP;
-        this.maskActivated = maskActivated;
+        this.isMaskOn = isMaskOn;
         // this.widgetSearcher = new WidgetSearcher();
     }
 
@@ -49,11 +49,11 @@ export default class WidgetController
         })
     }
 
-    updateMaskActivated(maskActivated)
+    updateMaskActivated(isMaskOn)
     {
-        this.maskActivated = maskActivated;
+        this.isMaskOn = isMaskOn;
         this.currentWidgets.forEach(widget => {
-            widget.updateMaskActivated(maskActivated);
+            widget.updateMaskActivated(isMaskOn);
         })
     }
 
@@ -74,7 +74,7 @@ export default class WidgetController
     activateWidgets(widgetClassArr)
     {
         widgetClassArr.forEach(widgetClass => {
-            this.currentWidgets.push(new widgetClass(this.maskValue, this.maskActivated))
+            this.currentWidgets.push(new widgetClass(this.maskValue, this.isMaskOn))
         });
         // widgetClassArr.forEach(widgetClass => {
         //     this.activateWidgets[widgetClass.name] = new widgetClass(this.maskValue);
