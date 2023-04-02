@@ -1,8 +1,7 @@
-// import WidgetSearcher from "./WidgetSearcher";
+import { bindHandlers } from "./helpers";
 
 export default class WidgetController
 {
-
     currentWidgets = [];
     WIDGET_MAP = {}; // regex path => arrays of widget class names
     widgetSearcher;
@@ -15,7 +14,27 @@ export default class WidgetController
         this.maskValue = maskValue;
         this.WIDGET_MAP = WIDGET_MAP;
         this.isMaskOn = isMaskOn;
-        // this.widgetSearcher = new WidgetSearcher();
+        
+        bindHandlers(this);
+        
+        chrome.runtime.onMessage.addListener(this.handleMessage)
+    }
+
+    handleMessage(request, sender, sendResponse)
+    {
+        console.log('in the controller handleMessage');
+        if (request.type === 'maskUpdate')
+        {
+            this.updateMaskValue(request.value);
+        }
+        else if(request.type === 'historyUpdate')
+        {
+            this.loadWidgets(request.value)
+        }
+        else if(request.type === "isMaskOn")
+        {
+            this.updateMaskActivated(request.value);
+        }
     }
 
     /**

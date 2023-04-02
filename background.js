@@ -1,8 +1,4 @@
 
-// (new BackgroundScript()).init();
-// const backgroundScript = new BackgroundScript();
-// backgroundScript.init();
-
 /**
  * Maintains state of isMaskOn and which content scripts are ready to receive messages
  */
@@ -20,7 +16,7 @@ class BackgroundScript
 
     constructor()
     {
-        // bind "this" to the instance for all handlers
+        // bind "this" to the instance for all handlers. I can't import the helper function to the backbround script for some reason
         for (const key of Object.getOwnPropertyNames(Object.getPrototypeOf(this)))
         {
             if (typeof this[key] === 'function' && key !== 'constructor' && key.startsWith('handle'))
@@ -45,10 +41,9 @@ class BackgroundScript
     setUpListeners()
     {
         console.log('setUpListeners');
-        // chrome.runtime.onMessage.addListener(this.contentScriptReady); // ready for content scripts
         chrome.runtime.onMessage.addListener(this.handleMessage); // ready for content scripts
         chrome.tabs.onUpdated.addListener(this.handleTabUpdated); // fires when a tab is updated. The update can be due to various reasons, such as changes in the URL, page title, favicon, or other properties. The event provides information about the updated tab, including its ID, changeInfo (an object containing properties that have changed), and the tab object itself.
-        chrome.webNavigation.onHistoryStateUpdated.addListener(details => urlUpdate(details.url)); // fired when the URL is changed due to an AJAX-based navigation (i.e., when the URL is updated without a full page reload)
+        chrome.webNavigation.onHistoryStateUpdated.addListener(this.handleOnHistoryStateUpdated); // fired when the URL is changed due to an AJAX-based navigation (i.e., when the URL is updated without a full page reload)
         chrome.tabs.onActivated.addListener(this.handleTabActivated); // fires when the tab gains focus
         chrome.webNavigation.onCompleted.addListener(this.handleFullPageLoad); // fired when a document, including the resources it refers to, is completely loaded and initialized
         // chrome.runtime.onMessage.addListener(this.checkIsMaskOn)
@@ -57,14 +52,9 @@ class BackgroundScript
 
     handleMessage(request, sender, sendResponse)
     {
-        // if (request.type === 'isMaskOn')
-        // {
-        //     this.checkIsMaskOn(request.value);
-        // }
-        // else 
         if (request.type === 'contentScriptReady')
         {
-            this.contentScriptReady(request, sender, sendResponse);
+            this.contentScriptReady(sender.tab.id, sendResponse);
         }
     }
 
@@ -130,6 +120,12 @@ class BackgroundScript
                 this.updateIsMaskOn(changes.isMaskOn.newValue)
             }
         }
+    }
+
+    handleOnHistoryStateUpdated(details)
+    {
+        console.log('handleOnHistoryUpdated', details);
+        this.urlUpdate(details.url);
     }
 
     async updateMaskValue(maskValue)
@@ -198,6 +194,7 @@ class BackgroundScript
      */
     async urlUpdate(url, tab)
     {
+        console.log('background script urlUpdate');
         if (!tab)
         {
             tab = await BackgroundScript.getCurrentTab();
@@ -231,25 +228,25 @@ class BackgroundScript
 
     /**
      * When a content script signals that it is ready, add it's ID to the ready set
-     * @param {*} request 
-     * @param {*} sender 
+     * 
+     * @param {int} tabId 
+     * @param {function} sendResponse
      */
-    contentScriptReady(request, sender, sendResponse) {
-        const tabId = sender.tab.id;
-        if (request.type === 'contentScriptReady')
+    contentScriptReady(tabId, sendResponse) 
+    {
+        console.log('background script contentScriptReady');
+        // add the content script's tab's ID to the ready set
+        this.readyContentScripts.add(tabId);
+        // send ack
+        sendResponse({ acknowledged: true });
+        // send any stored messages for the content script
+        if (this.storedMessages[tabId])
         {
-            // add the content script's tab's ID to the ready set
-            this.readyContentScripts.add(tabId);
-            // send ack
-            sendResponse({ acknowledged: true });
-            // send any stored messages for the content script
-            if (this.storedMessages[tabId])
-            {
-                this.storedMessages[tabId].forEach(message => {
-                    chrome.tabs.sendMessage(tabId, message);
-                });
-                this.storedMessages[tabId] = [];
-            }
+            console.log('Sending stored messages to content script');
+            this.storedMessages[tabId].forEach(message => {
+                chrome.tabs.sendMessage(tabId, message);
+            });
+            this.storedMessages[tabId] = [];
         }
     }
     /**
@@ -260,11 +257,13 @@ class BackgroundScript
      */
     static isDomainSupported(url)
     {
+        console.log('background script isDomainSupported');
         return BackgroundScript.targetDomainRegexList.some(regex => regex.test(url));
     }
 
     static async getIsMaskOn()
     {
+        console.log('background script getIsMaskOn');
         return new Promise((resolve) => {
             chrome.storage.sync.get('isMaskOn', function(data) 
             {
@@ -275,6 +274,7 @@ class BackgroundScript
 
     static async getMaskValue()
     {
+        console.log('background script getMaskValue');
         return new Promise((resolve) => {
             chrome.storage.sync.get('maskValue', function(data) 
             {
@@ -285,6 +285,7 @@ class BackgroundScript
 
     static async getCurrentTab()
     {
+        console.log('background script getCurrentTab');
         return new Promise((resolve) => {
             chrome.tabs.query({ active: true, currentWindow: true, }, (tabs) => {
                 resolve(tabs[0]);

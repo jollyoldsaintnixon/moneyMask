@@ -57,3 +57,20 @@ export function dollarsToFloat(dollars)
 {
     return parseFloat(dollars.replace(/[^0-9.-]+/g,""));
 }
+
+/**
+ * Pass in "this" context to bind all instance handlers to "this".
+ * The methods must be named "handle*".
+ * @param {this} that 
+ */
+export function bindHandlers(that)
+{
+    // bind "that" to the instance for all handlers
+    for (const key of Object.getOwnPropertyNames(Object.getPrototypeOf(that)))
+    {
+        if (typeof that[key] === 'function' && key !== 'constructor' && key.startsWith('handle'))
+        {
+            that[key] = that[key].bind(that);
+        }
+    }
+}

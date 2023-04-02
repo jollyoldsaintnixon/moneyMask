@@ -14,13 +14,12 @@ export default class FidelityWidgetBase
     maskValue = 100;
     isMaskOn = false;
 
-    originalValuesSaved = false;
+    targetValuesSaved = false;
+    secondaryEffectValuesSaved = false;
 
     targetNodeList = arrayToList([]); 
-    targetedNodesSelector = document.querySelectorAll('body'); // * Overwrite in child. a bit hacky here...
-    // afterEffectsSelectors = []; // an array of selector strings corresponding to each after effect. update in child classes.
-    // afterEffectsNodeLists = []; // an array of node lists that need to be updated after the mask is applied. filled when targets are first found.
-    searchedNodeList = document.querySelectorAll('body'); // a bit hacky here...
+    targetedNodesSelector = document.querySelectorAll('body'); // * Overwrite in child.
+    searchedNodeList = document.querySelectorAll('body'); // ? Is this necessary?
 
     searchingObserver; // runs until targets found
     targetedObserver; // only watches targets
@@ -56,7 +55,7 @@ export default class FidelityWidgetBase
         }
         else
         {
-            this.restoreOriginalValues();
+            this.maskDown();
         }
     }
     
@@ -72,15 +71,16 @@ export default class FidelityWidgetBase
         {
             return;
         }
-        if (!this.originalValuesSaved)
+        if (!this.targetValuesSaved)
         {
-            this.saveOriginalValues();
+            this.saveValues(this.targetNodeList);
+            this.targetValuesSaved = true;
         }
         for (const ele of this.targetNodeList)
         {
             ele.textContent = toDollars(this.maskValue);
         }
-        this.afterEffects();
+        this.maskSecondaryEffects();
     }
 
     /**
@@ -99,42 +99,54 @@ export default class FidelityWidgetBase
     }
 
     /**
-     * Saves the original values of the target nodes in the node's data attribute.
-     * Used when masking/demasking
+     * Saves the original values of the node list in the node's data attribute.
      * 
      * @param {NodeList} nodeList
      */
-    saveOriginalValues()
+    saveValues(nodeList)
     {
-        // const nodeLists = [this.targetNodeList].concat(this.afterEffectsNodeLists); // array of NodeLists
-        // for (const nodeList of nodeLists) // NodeList
-        // {
-        if (this.targetNodeList.length)
+        if (nodeList.length)
         {
-            for (const ele of this.targetNodeList) // Node
+            for (const node of nodeList) // Node
             {
-                ele.setAttribute('data-original-value', ele.textContent);
+                this.saveValue(node);
             }
-            this.originalValuesSaved = true;
         }
-        // }
+    }
+
+    /**
+     * Save the original value of a single node.
+     * @param {Node} node 
+     */
+    saveValue(node)
+    {
+        node.setAttribute('data-original-value', node.textContent);
     }
 
     /**
      * Restore the original values of the target nodes.
      * Used when masking/demasking.
      */
-    restoreOriginalValues()
+    maskDown()
     {
-        // const nodeLists = [this.targetNodeList].concat(this.afterEffectsNodeLists);
-        // for (const nodeList of nodeLists)
-        // {
-        for (const ele of this.targetNodeList)
+        // make sure we have values to restore
+        if (this.targetValuesSaved)
         {
-            ele.textContent = ele.dataset.originalValue;
+            for (const node of this.targetNodeList)
+            {
+                this.resetNodeValue(node);
+            }
+            this.resetSecondaryEffects();
         }
-        this.afterEffects();
-        // }
+    }
+
+    /**
+     * Restore the original values of the node
+     * @param {Node} node 
+     */
+    resetNodeValue(node)
+    {
+        node.textContent = node.dataset.originalValue;
     }
 
     /**
@@ -156,12 +168,21 @@ export default class FidelityWidgetBase
                     && this.getTargetNodes(mutation.addedNodes).length // checks for the targetNodes each time
                 ) 
                 {
-                    // this.fillAfterEffectsList();
-                    this.saveOriginalValues()
-                    this.maskUp();
-                    this.activateTargetedObserver();
-                    this.searchingObserver.disconnect();
-                    break;
+                    try 
+                    {     
+                        this.saveValues(this.targetNodeList)
+                        this.maskUp();
+                        this.activateTargetedObserver();
+                    } 
+                    catch (error) 
+                    {
+                        console.warn(error)
+                    }
+                    finally
+                    {
+                        this.searchingObserver.disconnect();
+                        break;
+                    }
                 }
             }
         })
@@ -169,18 +190,30 @@ export default class FidelityWidgetBase
 
     activateTargetedObserver() 
     {
-        this.targetedObserver = FidelityWidgetBase.createObserver(this.targetNodeList, (mutations) => {
+        this.targetedObserver = FidelityWidgetBase.createObserver(this.targetNodeList, function(mutations) {
             console.log("target mutations.length: ", mutations.length)
             for (const mutation of mutations)
             {
                 if (!this.internalUpdate(mutation) && 
                     (mutation.type === 'childList' || mutation.type === 'subtree')) 
                 {
-                    this.saveOriginalValues();
+                    this.saveValues(this.targetNodeList);
                     this.maskUp();
                 }
             }
-        });
+        }.bind(this));
+        // this.targetedObserver = FidelityWidgetBase.createObserver(this.targetNodeList, (mutations) => {
+        //     console.log("target mutations.length: ", mutations.length)
+        //     for (const mutation of mutations)
+        //     {
+        //         if (!this.internalUpdate(mutation) && 
+        //             (mutation.type === 'childList' || mutation.type === 'subtree')) 
+        //         {
+        //             this.saveValues(this.targetNodeList);
+        //             this.maskUp();
+        //         }
+        //     }d
+        // });
     }
 
     /**
@@ -222,7 +255,6 @@ export default class FidelityWidgetBase
             if (node.nodeType === Node.ELEMENT_NODE && node.querySelectorAll(this.targetedNodesSelector).length)
             {
                 this.targetNodeList = node.querySelectorAll(this.targetedNodesSelector);
-                // this.fillAfterEffectsList();
                 break;
             }
         }
@@ -230,11 +262,38 @@ export default class FidelityWidgetBase
     }
 
     /**
+     * Invoke/reset secondary effects based on isMaskOn.
+     * Effects should be determined by values in targetNodeList.
+     * @returns {void}
+     */
+    // secondaryEffects()
+    // {
+    //     if (this.isMaskOn)
+    //     {
+    //         this.maskSecondaryEffects()
+    //     }
+    //     else
+    //     {
+    //         this.resetSecondaryEffects()
+    //     }
+    //     return;
+    // }
+
+    /**
      * Trigger any after/secondary effects here. This should be overwritten in child classes.
      * Effects should be determined by values in targetNodeList.
      * @returns {void}
      */
-    afterEffects()
+    maskSecondaryEffects()
+    {
+        return;
+    }
+
+    /**
+     * Reset any after/secondary effects here. This should be overwritten in child classes.
+     * @returns {void}
+     */
+    resetSecondaryEffects()
     {
         return;
     }
