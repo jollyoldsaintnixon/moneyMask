@@ -1,8 +1,13 @@
 import { bindHandlers } from "./helpers";
 
+/**
+ * Controls which widgets are active on a given page and URL path.
+ * Updates active widgets when maskValue, isMaskOn change.
+ * Keeps track of which widgets are active 
+ */
 export default class WidgetController
 {
-    currentWidgets = [];
+    currentWidgets = {}; // widgetClass name => widget instance
     WIDGET_MAP = {}; // regex path => arrays of widget class names
     widgetSearcher;
     maskValue;
@@ -53,36 +58,72 @@ export default class WidgetController
             if (Object.hasOwnProperty.call(this.WIDGET_MAP, regex)) {
                 if ((new RegExp(regex)).test(url))
                 {
-                    this.activateWidgets(this.WIDGET_MAP[regex]);
+                    const upcomingWidgets = this.WIDGET_MAP[regex];
+                    this.deactivateWidgets(upcomingWidgets);
+                    this.activateWidgets(upcomingWidgets);
                     break;
                 }
             }
         }
     }
 
+    /**
+     * Push maskValue updates to active widgets
+     * @param {int} maskValue 
+     */
     updateMaskValue(maskValue)
     {
         this.maskValue = maskValue; // update the value locally so we can pass it to any widgets that we create later
-        this.currentWidgets.forEach(widget => { // update all current widgets
-            widget.updateMaskValue(maskValue);
-        })
+        // this.currentWidgets.forEach(widget => { // update all current widgets
+        //     widget.updateMaskValue(maskValue);
+        // })
+        for (const widgetClass in this.currentWidgets)  // update all current widgets
+        {
+            if (Object.hasOwnProperty.call(this.currentWidgets, widgetClass)) 
+            {
+                this.currentWidgets[widgetClass].updateMaskValue(maskValue);
+            }
+        }
     }
 
+    /**
+     * Push isMaskOn updates to active widgets
+     * @param {boolean} isMaskOn 
+     */
     updateMaskActivated(isMaskOn)
     {
         this.isMaskOn = isMaskOn;
-        this.currentWidgets.forEach(widget => {
-            widget.updateMaskActivated(isMaskOn);
-        })
+        // this.currentWidgets.forEach(widget => {
+        //     widget.updateMaskActivated(isMaskOn);
+        // })
+        for (const widgetClass in this.currentWidgets)
+        {
+            if (Object.hasOwnProperty.call(this.currentWidgets, widgetClass)) 
+            {
+                this.currentWidgets[widgetClass].updateMaskActivated(isMaskOn);
+            }
+        }
     }
 
     /**
      * Deactivate widgets
      */
-    deactivateWidgets() // TODO: I need to consider not deactivate those that should remain active (ie whose targets are unaffected by the history change)
+    deactivateWidgets(upcomingWidgets) // TODO: I need to consider not deactivate those that should remain active (ie whose targets are unaffected by the history change)
     {
-        this.currentWidgets.forEach(widget => widget.deactivate()); // shut down event listeners
-        this.currentWidgets = [];
+        // this.currentWidgets.forEach(widget => widget.deactivate()); // shut down event listeners
+        // this.currentWidgets = [];
+        for (const widgetClass in this.currentWidgets) 
+        {
+            if (Object.hasOwnProperty.call(this.currentWidgets, widgetClass)
+            && upcomingWidgets.none(widget => { // don't deactivate widgets that are still active 
+                return widget.name == widgetClass;
+            })) 
+            {
+                this.currentWidgets[widgetClass].deactivate();
+                delete this.currentWidgets[widgetClass]; // only delete those that are no longer active
+            }
+        }
+
     }
 
     /**
@@ -93,7 +134,12 @@ export default class WidgetController
     activateWidgets(widgetClassArr)
     {
         widgetClassArr.forEach(widgetClass => {
-            this.currentWidgets.push(new widgetClass(this.maskValue, this.isMaskOn))
+            // this.currentWidgets.push(new widgetClass(this.maskValue, this.isMaskOn))
+            // only make a new instance if it isn't already running
+            if (!this.currentWidgets[widgetClass])
+            {
+                this.currentWidgets[widgetClass.name] = new widgetClass(this.maskValue, this.isMaskOn);
+            }
         });
         // widgetClassArr.forEach(widgetClass => {
         //     this.activateWidgets[widgetClass.name] = new widgetClass(this.maskValue);
