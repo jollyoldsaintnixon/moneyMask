@@ -38,7 +38,7 @@ export function arrayToList(nodeArray)
  */
 export function toDollars(value)
 {
-    console.log("widget toDollars")
+    // console.log("helper toDollars")
     const formatter = new Intl.NumberFormat('en-US', {
         style: 'currency',
         currency: 'USD',

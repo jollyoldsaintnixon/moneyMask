@@ -1,5 +1,3 @@
-import { bindHandlers } from "./helpers";
-
 /**
  * Controls which widgets are active on a given page and URL path.
  * Updates active widgets when maskValue, isMaskOn change.
@@ -18,28 +16,6 @@ export default class WidgetController
         console.log('in the controller constructor');
         this.maskValue = maskValue;
         this.WIDGET_MAP = WIDGET_MAP;
-        this.isMaskOn = isMaskOn;
-        
-        bindHandlers(this);
-        
-        chrome.runtime.onMessage.addListener(this.handleMessage)
-    }
-
-    handleMessage(request, sender, sendResponse)
-    {
-        console.log('in the controller handleMessage');
-        if (request.type === 'maskUpdate')
-        {
-            this.updateMaskValue(request.value);
-        }
-        else if(request.type === 'historyUpdate')
-        {
-            this.loadWidgets(request.value)
-        }
-        else if(request.type === "isMaskOn")
-        {
-            this.updateMaskActivated(request.value);
-        }
     }
 
     /**

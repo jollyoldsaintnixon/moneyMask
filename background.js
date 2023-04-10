@@ -9,10 +9,11 @@ class BackgroundScript
         'robinhood.com',
     ].map(domain => new RegExp(`^https?://([a-zA-Z0-9-]+\.)?${escapeRegExp(domain)}`));
 
-    
+    hasInitialized = false; // used to track if the background script has been initialized
     isMaskOn = undefined; // will be a boolean
-    storedMessages = {}; // used for storing messages that are sent before the content script is ready to receive them
-    readyContentScripts = new Set(); // used for tracking witch tabs are running content scripts that are ready to receive messages
+    contentScriptPorts = {}; // used for tracking which ports are connected to the background script
+    // storedMessages = {}; // used for storing messages that are sent before the content script is ready to receive them
+    // readyContentScripts = new Set(); // used for tracking witch tabs are running content scripts that are ready to receive messages
 
     constructor()
     {
@@ -36,11 +37,13 @@ class BackgroundScript
         console.log('init');
         this.isMaskOn = await BackgroundScript.getIsMaskOn(); // get the current mask state initially. later update only when user does so
         console.log('isMaskOn', this.isMaskOn);
+        this.hasInitialized = true;
     }
 
     setUpListeners()
     {
         console.log('setUpListeners');
+        chrome.runtime.onConnect.addListener(this.handlePortConnect); // fired when a connection is made from either an extension process or a content script (e.g. via runtime.connect)
         chrome.runtime.onMessage.addListener(this.handleMessage); // ready for content scripts
         chrome.tabs.onUpdated.addListener(this.handleTabUpdated); // fires when a tab is updated. The update can be due to various reasons, such as changes in the URL, page title, favicon, or other properties. The event provides information about the updated tab, including its ID, changeInfo (an object containing properties that have changed), and the tab object itself.
         chrome.webNavigation.onHistoryStateUpdated.addListener(this.handleOnHistoryStateUpdated); // fired when the URL is changed due to an AJAX-based navigation (i.e., when the URL is updated without a full page reload)
@@ -50,12 +53,28 @@ class BackgroundScript
         chrome.storage.onChanged.addListener(this.handleStorageChange);
     }
 
+    handlePortConnect(port)
+    {
+        // console.assert(port.name.endswith('ContentScript'));
+        if (port.name.endsWith('ContentScript'))
+        {
+            this.handleContentScriptPort(port);
+        }
+    }
+
+    /**
+     * For use with "chrome.runtime.sendMessage"
+     * 
+     * @param {*} request 
+     * @param {*} sender 
+     * @param {*} sendResponse 
+     */
     handleMessage(request, sender, sendResponse)
     {
-        if (request.type === 'contentScriptReady')
-        {
-            this.contentScriptReady(sender.tab.id, sendResponse);
-        }
+        // if (request.type === 'contentScriptReady')
+        // {
+        //     this.contentScriptReady(sender.tab.id, sendResponse);
+        // }
     }
 
     /**
@@ -71,7 +90,7 @@ class BackgroundScript
         {
             this.updateIcon(tab);
         }
-        this.checkContentScript(changeInfo.url, tabId);
+        // this.checkContentScript(changeInfo.url, tabId);
     }
 
     /**
@@ -97,7 +116,7 @@ class BackgroundScript
     {
         chrome.tabs.get(details.tabId, (tab) => {
             this.updateIcon(tab);
-            this.checkContentScript(details.url, tab.id);
+            // this.checkContentScript(details.url, tab.id);
         });
     }
 
@@ -173,18 +192,18 @@ class BackgroundScript
     }
 
 
-    /**
-     * Checks if the content script tab's id should be removed from the ready set.
-     * @param {string} url 
-     * @param {int} tabId 
-     */
-    checkContentScript(url, tabId)
-    {
-        if (url && !BackgroundScript.isDomainSupported(url))
-        {
-            this.readyContentScripts.delete(tabId);
-        }
-    }
+    // /**
+    //  * Checks if the content script tab's id should be removed from the ready set.
+    //  * @param {string} url 
+    //  * @param {int} tabId 
+    //  */
+    // checkContentScript(url, tabId)
+    // {
+    //     if (url && !BackgroundScript.isDomainSupported(url))
+    //     {
+    //         this.readyContentScripts.delete(tabId);
+    //     }
+    // }
 
     /**
      * Send the updated url to the active content script.
@@ -199,56 +218,84 @@ class BackgroundScript
         {
             tab = await BackgroundScript.getCurrentTab();
         }
+        console.log("urlUpdate tab:" , tab);
         this.sendMessageToContentScript(tab.id, { type: 'historyUpdate', value: url, });
     }
 
     /**
      * Checks if the tab is ready to receive messages before sending
      * @param {int} tabId 
-     * @param {{ bool active, bool currentWindow }} message 
+     * @param {Object} message: { {string} type, {*} value }
      */
     sendMessageToContentScript(tabId, message)
     {
-        if (this.readyContentScripts.has(tabId)) // content script is ready
+        const port = this.contentScriptPorts[tabId];
+        if (!port) // !no port, so no content script. this may trigger on every tab without a content script; need to check on this
         {
-            console.log('Sending message to content script', message);
-            chrome.tabs.sendMessage(tabId, message);
+            console.warn('No port for tab', tabId);
         }
-        else // content script is not ready
+        else
         {
-            console.warn('Content script not ready in tab', tabId);
-            console.warn("Storing message", message);
-            if (!this.storedMessages[tabId])
-            {
-                this.storedMessages[tabId] = [];
-            }
-            this.storedMessages[tabId].push(message);
+            port.postMessage(message);
         }
+        // if (this.readyContentScripts.has(tabId)) // content script is ready
+        // {
+        //     console.log('Sending message to content script', message);
+        //     chrome.tabs.sendMessage(tabId, message);
+        // }
+        // else // content script is not ready
+        // {
+        //     console.warn('Content script not ready in tab', tabId);
+        //     console.warn("Storing message", message);
+        //     if (!this.storedMessages[tabId])
+        //     {
+        //         this.storedMessages[tabId] = [];
+        //     }
+        //     this.storedMessages[tabId].push(message);
+        // }
     }
 
+    // /**
+    //  * When a content script signals that it is ready, add it's ID to the ready set
+    //  * 
+    //  * @param {int} tabId 
+    //  * @param {function} sendResponse
+    //  */
+    // contentScriptReady(tabId, sendResponse) 
+    // {
+    //     console.log('background script contentScriptReady');
+    //     // add the content script's tab's ID to the ready set
+        // this.readyContentScripts.add(tabId);
+    //     // send ack
+    //     sendResponse({ acknowledged: true });
+    //     // send any stored messages for the content script
+    //     if (this.storedMessages[tabId])
+    //     {
+    //         console.log('Sending stored messages to content script');
+    //         this.storedMessages[tabId].forEach(message => {
+    //             chrome.tabs.sendMessage(tabId, message);
+    //         });
+    //         this.storedMessages[tabId] = [];
+    //     }
+    // }
+
     /**
-     * When a content script signals that it is ready, add it's ID to the ready set
-     * 
-     * @param {int} tabId 
-     * @param {function} sendResponse
+     * Set up content script port connection. 
      */
-    contentScriptReady(tabId, sendResponse) 
+    handleContentScriptPort(port)
     {
-        console.log('background script contentScriptReady');
-        // add the content script's tab's ID to the ready set
-        this.readyContentScripts.add(tabId);
-        // send ack
-        sendResponse({ acknowledged: true });
-        // send any stored messages for the content script
-        if (this.storedMessages[tabId])
-        {
-            console.log('Sending stored messages to content script');
-            this.storedMessages[tabId].forEach(message => {
-                chrome.tabs.sendMessage(tabId, message);
-            });
-            this.storedMessages[tabId] = [];
-        }
+        this.contentScriptPorts[port.sender.tab.id] = port;
+        port.onDisconnect.addListener(() => {
+            console.log(port.type + " disconnected at background script");
+            delete this.contentScriptPorts[port.sender.tab.id]; // delete port
+            // this.contentScriptPorts.delete(port.sender.tab.id); // delete port
+        });
+        port.onMessage.addListener((message) => {
+            // * just logging for now
+            console.log("Message from " + port.type + " at background script", message);              
+        });
     }
+
     /**
      * Checks if domain is supported
      * 
@@ -303,4 +350,25 @@ function escapeRegExp(string) {
     return string.replace(/[.*+\-?^${}()|[\]\\]/g, '\\$&');
 }
 
-(new BackgroundScript()).init();
+// both chrome.runtime.onInstalled and chrome.runtime.onStartup are called when the extension is installed and the browser has "settled down"
+const backgroundScript = new BackgroundScript();
+
+chrome.runtime.onInstalled.addListener(() => 
+{
+    console.log('background script onInstalled');
+    if (!backgroundScript.hasInitialized)
+    {
+        backgroundScript.init();
+    }
+});
+  
+chrome.runtime.onStartup.addListener(() => 
+{
+    console.log('background script onStartup');
+    if (!backgroundScript.hasInitialized)
+    {
+        backgroundScript.init();
+    }
+});
+
+// (new BackgroundScript()).init();

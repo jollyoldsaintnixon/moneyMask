@@ -166,11 +166,12 @@ export default class FidelityWidgetBase
                 if (
                     (mutation.type === 'childList' || mutation.type === 'subtree')
                     && this.getTargetNodes(mutation.addedNodes).length // checks for the targetNodes each time
+                    // && mutation.addedNodes.querySelectorAll(this.targetedNodesSelector).length
                 ) 
                 {
                     try 
                     {     
-                        this.saveValues(this.targetNodeList)
+                        this.saveValues(this.getTargetNodes(mutation.addedNodes));
                         this.maskUp();
                         this.activateTargetedObserver();
                     } 
@@ -190,19 +191,7 @@ export default class FidelityWidgetBase
 
     activateTargetedObserver() 
     {
-        this.targetedObserver = FidelityWidgetBase.createObserver(this.targetNodeList, function(mutations) {
-            console.log("target mutations.length: ", mutations.length)
-            for (const mutation of mutations)
-            {
-                if (!this.internalUpdate(mutation) && 
-                    (mutation.type === 'childList' || mutation.type === 'subtree')) 
-                {
-                    this.saveValues(this.targetNodeList);
-                    this.maskUp();
-                }
-            }
-        }.bind(this));
-        // this.targetedObserver = FidelityWidgetBase.createObserver(this.targetNodeList, (mutations) => {
+        // this.targetedObserver = FidelityWidgetBase.createObserver(this.targetNodeList, function(mutations) {
         //     console.log("target mutations.length: ", mutations.length)
         //     for (const mutation of mutations)
         //     {
@@ -212,8 +201,23 @@ export default class FidelityWidgetBase
         //             this.saveValues(this.targetNodeList);
         //             this.maskUp();
         //         }
-        //     }d
-        // });
+        //     }
+        // }.bind(this), true);
+        this.targetedObserver = FidelityWidgetBase.createObserver(this.targetNodeList, (mutations) => {
+            console.log("target mutations.length: ", mutations.length)
+            for (const mutation of mutations)
+            {
+                if (!this.internalUpdate(mutation) && 
+                    (mutation.type === 'childList' || mutation.type === 'subtree')
+                    && this.refreshTargetNodes().length) 
+                {
+                    this.secondaryEffectValuesSaved = false; // we need to save the secondary values again since those nodes have also been updated
+                    this.saveValues(this.targetNodeList);
+                    this.maskUp();
+                    break; // break out of the loop for efficiency
+                }
+            }
+        }, true);
     }
 
     /**
@@ -228,9 +232,14 @@ export default class FidelityWidgetBase
         return mutation.target.textContent == toDollars(this.maskValue)
     }
 
+    /**
+     * Search the nodeList for the target nodes. Short circuits if the targetNodeList already found.
+     * Returns the targetNodeList and saves it to this.targetNodeList if it's empty.
+     * @param {NodeList} nodeList 
+     */
     getTargetNodes(nodeList = this.searchedNodeList)
     {
-        console.log("widget targetNodeList")
+        // console.log("widget targetNodeList")
         if (this.targetNodeList.length) // short circuit
         {
             return this.targetNodeList;
@@ -238,16 +247,32 @@ export default class FidelityWidgetBase
         this.targetNodeList = this.findTargetNodes(nodeList);
         return this.targetNodeList;
     }
+
+    /**
+     * Searches again for target nodes. If any found, resets current targetNodeList to the new targets nodes
+     * @param {NodeList} nodeList 
+     * @returns {NodeList} targetNodeList
+     */
+    refreshTargetNodes(nodeList = this.searchedNodeList)
+    {
+        const targetNodeList = this.findTargetNodes(nodeList);
+        if (targetNodeList.length)
+        {
+            this.targetNodeList = targetNodeList;
+        }
+        return targetNodeList;
+    }
+
     /**
      * ! Be sure to overwrite "targetedNodesSelector" in child class. 
      * Returns the nodes that the widget should update. 
      * * Will overwrite this.targetNodeList if any matches are found.
      * 
-     * @returns {List<Node>}
+     * @returns {List<Node>} targetNodeList
      */
     findTargetNodes(nodeList = this.nodeToSearch)
     {
-        console.log("findTargetNodes")
+        // console.log("findTargetNodes")
         // const targetNodeList = []; // reset (apparently going from List -> array -> List is the best we can do)
         for (const node of nodeList)
         {
@@ -310,13 +335,31 @@ export default class FidelityWidgetBase
         return toDollars(this.maskValue * proportion);
     }
 
-    static createObserver(nodeList, observerCallBack)
+    /**
+     * Create an observer over each node in the node list.
+     * Set "watchAncestor" to true if you want to watch an ancestor node instead of the node itself.
+     * Watching the ancestor allows for the callback to be triggered when the target node is removed
+     * from the DOM.
+     * 
+     * @param {NodeList} nodeList 
+     * @param {Function} observerCallBack 
+     * @param {boolean} watchAncestor whether to watch the parent node or the node itself
+     * @returns 
+     */
+    static createObserver(nodeList, observerCallBack, watchAncestor = false)
     {
-        console.log("base createObserver")
+        // console.log("base createObserver")
         const observer = new MutationObserver(observerCallBack);
     
-        for (const node of nodeList)
+        for (let node of nodeList)
         {
+            if (watchAncestor) // if we want to watch the ancestor, crawl on up the tree. the loop count is based on trial and error.
+            {
+                for (let i=0; i<5; i++)
+                {
+                    node = node.parentElement;
+                }
+            }
             observer.observe(node, FidelityWidgetBase.observerConfig);
         }
     

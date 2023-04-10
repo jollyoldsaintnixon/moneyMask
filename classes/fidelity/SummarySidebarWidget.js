@@ -10,7 +10,7 @@ export default class SummarySidebarWidget extends FidelityWidgetBase
     accountsTotalSelector = '[class$="acct-selector__balance-wrapper"] > span:nth-child(2)';
     accountsTotal = null; // node that has the total of totals. I memoize it since it is a single node and easy to track.
     groupTotalNodesSelector = '.acct-selector__group-balance'; // each "group" of accounts (ie retirement, custodial, etc) has a total
-    groupTotalNodes = null; // node list of group total nodes. I memoize it since it is easy to track.
+    // groupTotalNodes = null; // node list of group total nodes. I memoize it since it is easy to track.
 
     /**
      * Gets the "accounts total" node, that is the node that has the total of all accounts.
@@ -34,11 +34,12 @@ export default class SummarySidebarWidget extends FidelityWidgetBase
      */
     getGroupTotalNodes()
     {
-        if (!this.groupTotalNodes)
-        {
-            this.groupTotalNodes = document.querySelectorAll(this.groupTotalNodesSelector);
-        }
-        return this.groupTotalNodes;
+        return document.querySelectorAll(this.groupTotalNodesSelector);
+        // if (!this.groupTotalNodes)
+        // {
+            // this.groupTotalNodes = document.querySelectorAll(this.groupTotalNodesSelector);
+        // }
+        // return this.groupTotalNodes;
     }
 
     /**
@@ -75,7 +76,7 @@ export default class SummarySidebarWidget extends FidelityWidgetBase
      */
     maskGroupTotalValues()
     {
-        console.log("maskGroupTotalValues");
+        // console.log("maskGroupTotalValues");
         const groupTotalNodes = this.getGroupTotalNodes(); // document.querySelectorAll(this.groupTotalNodesSelector);
         // subfunction to get common ancestor of targetNode and groupTotalNode
         const getCommonAncestor = (node) =>
@@ -182,7 +183,7 @@ export default class SummarySidebarWidget extends FidelityWidgetBase
      */
     getGainNode(starterNode)
     {
-        console.log('widget getGainNode');
+        // console.log('widget getGainNode');
         let gainNode = null;
         try
         {
