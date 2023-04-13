@@ -4,7 +4,7 @@
   "description": "Conceals the value of your brokerage accounts so that you can share your screen without shame.",
   "version": "1.0",
   "action": {
-    "default_popup": "popUp.html",
+    "default_popup": "popUp/popUp.html",
     "default_icon": {
       "16": "icons/noMatchInactive-16.png",
       "48": "icons/noMatchInactive-48.png",

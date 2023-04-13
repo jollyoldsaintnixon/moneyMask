@@ -1,0 +1,17 @@
+.banner {
+    color: blue;
+}
+
+.toggle-button {
+    padding: 10px 20px;
+    font-size: 14px;
+    cursor: pointer;
+    background-color: #f0f0f0;
+    border: 1px solid #ccc;
+}
+
+.toggle-active {
+    background-color: #007bff;
+    color: white;
+    border-color: #007bff;
+}
