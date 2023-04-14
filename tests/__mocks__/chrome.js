@@ -3,24 +3,26 @@ const mockStorage = {
     isMaskOn: true,
 };
 
+const chromePort = {
+    onDisconnect: {
+        addListener: jest.fn()
+    },
+    onMessage: {
+        addListener: function(callback) {
+            this.trigger = callback;
+        }
+    },
+    postMessage: jest.fn(),
+    triggerMessage: function(message) { // this is a hack to trigger the onMessage listener
+        this.onMessage.trigger(message);
+    },
+    name: 'ContentScript',
+};
+
 const chromeMock = {
     runtime: {
         connect: jest.fn(() => {
-            return {
-                onDisconnect: {
-                    addListener: jest.fn()
-                },
-                onMessage: {
-                    addListener: function(callback) {
-                        this.trigger = callback;
-                    }
-                },
-                postMessage: jest.fn(),
-                triggerMessage: function(message) {
-                    this.onMessage.trigger(message);
-                },
-                name: 'ContentScript',
-            };
+            return chromePort;
         }),
         id: 'mockId',
     },
@@ -28,7 +30,6 @@ const chromeMock = {
         sync: {
             get: jest.fn((key, callback) => {
                 return new Promise(resolve => {
-                    console.log('in the mock get', key, callback)
                     const data = { [key]: mockStorage[key] };
                     if (typeof callback === 'function')
                     {
