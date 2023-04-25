@@ -6,6 +6,7 @@ global.chrome = chromeMock;
 
 describe('ContentScript', () => {
     beforeEach(() => {
+        // reset chrome runtime connect mock
         chrome.runtime.connect.mockClear();
     }) 
     test('should instantiate with a passed-in widget map', () => {
