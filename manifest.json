@@ -18,6 +18,7 @@
     }
   ],
   "background": {
+    "type": "module",
     "service_worker": "background.js"
   },
   "permissions": [

@@ -1,10 +1,10 @@
 import { toDollars } from "../helpers";
-import FidelityWidgetBase from "./FidelityWidgetBase";
+import WidgetBase from "../WidgetBase";
 
 "acct-selector__all-accounts-balance" // total for all accounts
 "acct-selector__acct-balance" // specific account, it's a div and the actual balance is the second span
 
-export default class SummarySidebarWidget extends FidelityWidgetBase 
+export default class SummarySidebarWidget extends WidgetBase 
 {
     targetedNodesSelector = '[class$="_acct-balance"] > span:nth-child(2)';
     accountsTotalSelector = '[class$="acct-selector__balance-wrapper"] > span:nth-child(2)';
@@ -13,42 +13,13 @@ export default class SummarySidebarWidget extends FidelityWidgetBase
     // groupTotalNodes = null; // node list of group total nodes. I memoize it since it is easy to track.
 
     /**
-     * Gets the "accounts total" node, that is the node that has the total of all accounts.
-     * It is memoized as an instance variable since it is used frequently and is a specific node.
-     * 
-     * @returns {Node}
-     */
-    getAccountsTotal()
-    {
-        if (!this.accountsTotal)
-        {
-            this.accountsTotal = document.querySelector(this.accountsTotalSelector);
-        }
-        return this.accountsTotal;
-    }
-
-    /**
-     * Gets the "group total" node for a given account node.
-     * 
-     * @returns {NodeList}
-     */
-    getGroupTotalNodes()
-    {
-        return document.querySelectorAll(this.groupTotalNodesSelector);
-        // if (!this.groupTotalNodes)
-        // {
-            // this.groupTotalNodes = document.querySelectorAll(this.groupTotalNodesSelector);
-        // }
-        // return this.groupTotalNodes;
-    }
-
-    /**
      * Updates the "gain" node for each account (the gain/loss for the day).
      * Updates the sum value of all accounts.
      * ? is this ever called when the mask is down? if not, we can calculate the total much more easily.
      */
     maskSecondaryEffects()
     {
+        console.log('summaryWidget maskSecondaryEffects')
         // let total = 0;
         for (const node of this.targetNodeList)
         {
@@ -76,7 +47,7 @@ export default class SummarySidebarWidget extends FidelityWidgetBase
      */
     maskGroupTotalValues()
     {
-        // console.log("maskGroupTotalValues");
+        console.log("summaryWidget maskGroupTotalValues");
         const groupTotalNodes = this.getGroupTotalNodes(); // document.querySelectorAll(this.groupTotalNodesSelector);
         // subfunction to get common ancestor of targetNode and groupTotalNode
         const getCommonAncestor = (node) =>
@@ -110,37 +81,6 @@ export default class SummarySidebarWidget extends FidelityWidgetBase
             groupTotalNode.textContent = toDollars(groupTotal);
         }
     }
-    // maskGroupTotalNode(starterNode)
-    // {
-    //     const groupTotalNode = this.getGroupTotalNode(starterNode);
-    //     if (!groupTotalNode) return;
-    //     if (!this.secondaryEffectValuesSaved)
-    //     {
-    //         this.saveValue(groupTotalNode);
-    //     }
-    //     const originalNodeDollars = starterNode.dataset.originalValue;
-    //     groupTotalNode.textContent = this.makeProportions(originalNodeDollars, groupTotalNode.textContent);
-    // }
-
-    // getGroupTotalNode(starterNode)
-    // {
-    //     let groupTotalNode = starterNode;
-    //     // go up the tree to the common ancestor of the group total node
-    //     for (let i=0; i<13; i++)
-    //     {
-    //         if (!groupTotalNode.parentElement)
-    //         {
-    //             return null; // was not able to climb to common ancestor
-    //         }
-    //         groupTotalNode = groupTotalNode.parentElement;
-    //     }
-    //     // go down the tree to the group total node
-    //     groupTotalNode = groupTotalNode.querySelector('.acct-selector__group-balance');
-
-    //     console.log("groupTotalNode:", groupTotalNode);
-    //     // console.log("groupTotalNode.textContent:", groupTotalNode.textContent);
-    //     return groupTotalNode;
-    // }
 
     /**
      * Update the gain/loss value for each account.
@@ -148,6 +88,7 @@ export default class SummarySidebarWidget extends FidelityWidgetBase
      */
     maskGainNodeValue(targetNode)
     {
+        console.log("summaryWidget maskGainNodeValue", targetNode)
         const gainNode = this.getGainNode(targetNode);
         // ensure that there is a gain node for this account
         if (!gainNode) return;
@@ -160,18 +101,21 @@ export default class SummarySidebarWidget extends FidelityWidgetBase
     }
 
     /**
-     * Mask the total value for all accounts. save original value first
+     * Mask the total value for all accounts. save original value first.
+     * Makes sure you don't save a masked value as the original value
      * @param {float} total
      */ 
     // maskAccountsTotalValue(total)
     maskAccountsTotalValue()
     {
-        if (!this.secondaryEffectValuesSaved)
+        console.log("summaryWidget maskAccountsTotalValue")
+        const total = toDollars(this.targetNodeList.length * this.maskValue);
+
+        if (!this.secondaryEffectValuesSaved && this.getAccountsTotal().textContent !== total)
         {
             this.saveValue(this.getAccountsTotal());
         }
-        const total = this.targetNodeList.length * this.maskValue;
-        this.getAccountsTotal().textContent = toDollars(total); 
+        this.getAccountsTotal().textContent = total; 
     }
 
     /**
@@ -183,7 +127,7 @@ export default class SummarySidebarWidget extends FidelityWidgetBase
      */
     getGainNode(starterNode)
     {
-        // console.log('widget getGainNode');
+        console.log('summaryWidget getGainNode', starterNode);
         let gainNode = null;
         try
         {
@@ -191,59 +135,43 @@ export default class SummarySidebarWidget extends FidelityWidgetBase
         }
         catch (error)
         {
-            console.warn('did not find gain node');
+            // console.warn('did not find gain node');
         }
         return gainNode
     }
 
-    // /**
-    //  * (Async) Get the gain node for the given node.
-    //  * Retries up to three times.
-    //  * The gain node is the node with the daily gain/loss value.
-    //  * 
-    //  * @param {Node} targetNode 
-    //  * @param {int} retryCount = 0
-    //  * @returns {Promise} resolves to Node|null
-    //  */
-    // async getGainNode(targetNode, retryCount = 0)
-    // {
-    //     console.log("widget getGainNode");
+    /**
+     * Gets the "accounts total" node, that is the node that has the total of all accounts.
+     * It is memoized as an instance variable since it is used frequently and is a specific node.
+     * @returns {Node}
+     */
+    getAccountsTotal()
+    {
+        console.log("summaryWidget getAccountsTotal")
+        if (!this.accountsTotal)
+        {
+            this.accountsTotal = document.querySelector(this.accountsTotalSelector);
+        }
+        return this.accountsTotal;
+    }
 
-    //     const promise = new Promise((resolve) => {
-    //         const findGainNode = (targetNode, retryCount) => 
-    //         {
-    //             let gainNode;
-    //             try 
-    //             {
-    //                 gainNode = targetNode.parentElement.nextElementSibling.childNodes[1];
-    //                 resolve(gainNode);
-    //             }
-    //             catch (error)
-    //             {
-    //                 console.log('did not find gain node, retryCount = ' + retryCount);
-    //                 if (retryCount < 3)
-    //                 {
-    //                     setTimeout(() => {
-    //                         findGainNode(targetNode, ++retryCount);
-    //                     }, 50);
-    //                 }
-    //                 else
-    //                 {
-    //                     console.warn('could not find gain node');
-    //                     resolve(null);
-    //                 }
-    //             }
-    //         }
-
-    //         findGainNode(targetNode, retryCount);
-    //     });
-
-    //     const gainNode = await promise;
-    //     return gainNode;
-    // }
+    /**
+     * Gets the "group total" node for a given account node.
+     * @returns {NodeList}
+     */
+    getGroupTotalNodes()
+    {
+        return document.querySelectorAll(this.groupTotalNodesSelector);
+        // if (!this.groupTotalNodes)
+        // {
+            // this.groupTotalNodes = document.querySelectorAll(this.groupTotalNodesSelector);
+        // }
+        // return this.groupTotalNodes;
+    }
 
     resetSecondaryEffects()
     {
+        console.log("summaryWidget resetSecondaryEffects");
         for (const node of this.targetNodeList)
         {
             this.resetGainNodeValue(node);
@@ -254,6 +182,7 @@ export default class SummarySidebarWidget extends FidelityWidgetBase
 
     resetGainNodeValue(node)
     {
+        console.log("summaryWidget resetGainNodeValue", node)
         const gainNode = this.getGainNode(node);
         if (!gainNode) return;
         this.resetNodeValue(gainNode);
@@ -261,12 +190,13 @@ export default class SummarySidebarWidget extends FidelityWidgetBase
 
     resetAccountsTotalValue()
     {
+        console.log("summaryWidget resetAccountsTotalValue");
         this.resetNodeValue(this.getAccountsTotal());
     }
 
     resetGroupTotalValues()
     {
-        console.log("resetGroupTotalValues");
+        console.log("summaryWidget resetGroupTotalValues");
         const groupTotalNodes = this.getGroupTotalNodes();
         for (const groupTotalNode of groupTotalNodes)
         {

@@ -3,26 +3,31 @@ const mockStorage = {
     isMaskOn: true,
 };
 
-const chromePort = {
-    onDisconnect: {
-        addListener: jest.fn()
-    },
-    onMessage: {
-        addListener: function(callback) {
-            this.trigger = callback;
-        }
-    },
-    postMessage: jest.fn(),
-    triggerMessage: function(message) { // this is a hack to trigger the onMessage listener
-        this.onMessage.trigger(message);
-    },
-    name: 'ContentScript',
+const createChromePort = () => {
+    return {
+        onDisconnect: {
+            addListener: jest.fn()
+        },
+        onMessage: {
+            addListener: function(callback) {
+                this.trigger = callback;
+            }
+        },
+        postMessage: jest.fn(),
+        triggerMessage: function(message) { // this is a hack to trigger the onMessage listener
+            this.onMessage.trigger(message);
+        },
+        name: 'ContentScript',
+    };
 };
 
 const chromeMock = {
+    action: {
+        setIcon: jest.fn(),
+    },
     runtime: {
         connect: jest.fn(() => {
-            return chromePort;
+            return createChromePort();
         }),
         id: 'mockId',
     },

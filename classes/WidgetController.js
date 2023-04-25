@@ -15,6 +15,7 @@ export default class WidgetController
     {
         console.log('in the controller constructor');
         this.maskValue = maskValue;
+        this.isMaskOn = isMaskOn;
         this.WIDGET_MAP = WIDGET_MAP;
     }
 
@@ -49,6 +50,7 @@ export default class WidgetController
      */
     updateMaskValue(maskValue)
     {
+        console.log("widgetController updating mask value to: ", maskValue)
         this.maskValue = maskValue; // update the value locally so we can pass it to any widgets that we create later
         // this.currentWidgets.forEach(widget => { // update all current widgets
         //     widget.updateMaskValue(maskValue);
@@ -68,6 +70,7 @@ export default class WidgetController
      */
     updateMaskActivated(isMaskOn)
     {
+        console.log("widgetController updating mask activated to: ", isMaskOn)
         this.isMaskOn = isMaskOn;
         // this.currentWidgets.forEach(widget => {
         //     widget.updateMaskActivated(isMaskOn);
@@ -86,6 +89,7 @@ export default class WidgetController
      */
     deactivateWidgets(upcomingWidgets) // TODO: I need to consider not deactivate those that should remain active (ie whose targets are unaffected by the history change)
     {
+        console.log("widgetController deactivating widgets. upcomingWidgets: ", upcomingWidgets, " currentWidgets: ", this.currentWidgets);
         // this.currentWidgets.forEach(widget => widget.deactivate()); // shut down event listeners
         // this.currentWidgets = [];
         for (const widgetClass in this.currentWidgets) 
@@ -109,6 +113,7 @@ export default class WidgetController
      */
     activateWidgets(widgetClassArr)
     {
+        console.log("widgetController activating widgets: ", widgetClassArr);
         widgetClassArr.forEach(widgetClass => {
             // this.currentWidgets.push(new widgetClass(this.maskValue, this.isMaskOn))
             // only make a new instance if it isn't already running

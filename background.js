@@ -2,21 +2,23 @@
 /**
  * Maintains state of isMaskOn and which content scripts are ready to receive messages
  */
-class BackgroundScript
+export default class BackgroundScript
 {
     static targetDomainRegexList = [ // domains that the extension runs on
         'fidelity.com',
         'robinhood.com',
     ].map(domain => new RegExp(`^https?://([a-zA-Z0-9-]+\.)?${escapeRegExp(domain)}`));
 
-    hasInitialized = false; // used to track if the background script has been initialized
+    // hasInitialized = false; // used to track if the background script has been initialized
     isMaskOn = undefined; // will be a boolean
     contentScriptPorts = {}; // used for tracking which ports are connected to the background script
+    currentIconPath = ""; // set when we update icon. so we don't update it unnecessarily
     // storedMessages = {}; // used for storing messages that are sent before the content script is ready to receive them
     // readyContentScripts = new Set(); // used for tracking witch tabs are running content scripts that are ready to receive messages
 
     constructor()
     {
+        console.log('background script constructor');
         // bind "this" to the instance for all handlers. I can't import the helper function to the backbround script for some reason
         for (const key of Object.getOwnPropertyNames(Object.getPrototypeOf(this)))
         {
@@ -34,15 +36,18 @@ class BackgroundScript
     */
     async init()
     {
-        console.log('init');
+        debugger
+        console.log('background script init');
         this.isMaskOn = await BackgroundScript.getIsMaskOn(); // get the current mask state initially. later update only when user does so
         console.log('isMaskOn', this.isMaskOn);
-        this.hasInitialized = true;
+        const currentTab = await BackgroundScript.getCurrentTab();
+        this.updateIcon(currentTab);
+        // this.hasInitialized = true;
     }
 
     setUpListeners()
     {
-        console.log('setUpListeners');
+        console.log('background script setUpListeners');
         chrome.runtime.onConnect.addListener(this.handlePortConnect); // fired when a connection is made from either an extension process or a content script (e.g. via runtime.connect)
         chrome.runtime.onMessage.addListener(this.handleMessage); // ready for content scripts
         chrome.tabs.onUpdated.addListener(this.handleTabUpdated); // fires when a tab is updated. The update can be due to various reasons, such as changes in the URL, page title, favicon, or other properties. The event provides information about the updated tab, including its ID, changeInfo (an object containing properties that have changed), and the tab object itself.
@@ -55,6 +60,7 @@ class BackgroundScript
 
     handlePortConnect(port)
     {
+        console.log('background script handlePortConnect');
         // console.assert(port.name.endswith('ContentScript'));
         if (port.name.endsWith('ContentScript'))
         {
@@ -71,6 +77,7 @@ class BackgroundScript
      */
     handleMessage(request, sender, sendResponse)
     {
+        console.log('background script handleMessage', request, sender, sendResponse);
         // if (request.type === 'contentScriptReady')
         // {
         //     this.contentScriptReady(sender.tab.id, sendResponse);
@@ -86,6 +93,7 @@ class BackgroundScript
      * @param {*} tab 
      */
     handleTabUpdated(tabId, changeInfo, tab) {
+        console.log('background script handleTabUpdated', tabId, changeInfo, tab);
         if (changeInfo.status === 'complete') 
         {
             this.updateIcon(tab);
@@ -100,7 +108,10 @@ class BackgroundScript
      * 
      * @param {Object} activeInfo 
      */
-    handleTabActivated(activeInfo) {
+    handleTabActivated(activeInfo) 
+    {
+        debugger
+        console.log('background script handleTabActivated', activeInfo);
         chrome.tabs.get(activeInfo.tabId, (tab) => {
           this.updateIcon(tab);
           this.sendMessageToContentScript(tab.id, { type: 'isMaskOn', value: this.isMaskOn, });
@@ -114,6 +125,7 @@ class BackgroundScript
      */
     handleFullPageLoad(details) 
     {
+        console.log('background script handleFullPageLoad', details);
         chrome.tabs.get(details.tabId, (tab) => {
             this.updateIcon(tab);
             // this.checkContentScript(details.url, tab.id);
@@ -128,6 +140,7 @@ class BackgroundScript
      */
     handleStorageChange(changes, areaName)
     {
+        console.log('background script handleStorageChange', changes, areaName);
         if (areaName === 'sync')
         {
             if (changes.maskValue)
@@ -143,12 +156,13 @@ class BackgroundScript
 
     handleOnHistoryStateUpdated(details)
     {
-        console.log('handleOnHistoryUpdated', details);
+        console.log('background script handleOnHistoryStateUpdated', details);
         this.urlUpdate(details.url);
     }
 
     async updateMaskValue(maskValue)
     {
+        console.log('background script updateMaskValue', maskValue);
         // send a message to the content script with the updated value
         const tab = await BackgroundScript.getCurrentTab();
         this.sendMessageToContentScript(tab.id, { type: 'maskUpdate', value: maskValue });
@@ -161,19 +175,27 @@ class BackgroundScript
      * @param {*} tab 
      */
     updateIcon(tab) {
+        debugger
+        console.log('background script updateIcon', tab);
         // test for a domain pattern match in the url
         const iconFileBase = BackgroundScript.isDomainSupported(tab.url) ?  "icons/banditMask" : "icons/noMatch";
         // check if mask is on
         const active = this.isMaskOn ? "Active" : "Inactive";
-        // set icon
-        chrome.action.setIcon({
-            path: {
-                '16': iconFileBase + active + "-16.png",
-                '48': iconFileBase + active + "-48.png",
-                '128': iconFileBase + active +  "-128.png",
-            },
-            tabId: tab.id
-        });
+        const updatedIconPath = iconFileBase + active;
+        // set icon if needed
+        if (this.currentIconPath != updatedIconPath)
+        {
+            console.log('updating icon from ', this.currentIconPath, ' to ', updatedIconPath);
+            chrome.action.setIcon({
+                path: {
+                    '16': updatedIconPath + "-16.png",
+                    '48': updatedIconPath + "-48.png",
+                    '128': updatedIconPath +  "-128.png",
+                },
+                tabId: tab.id
+            });
+        }
+        this.currentIconPath = updatedIconPath;
     }
 
     /**
@@ -182,6 +204,7 @@ class BackgroundScript
      */
     async updateIsMaskOn(isMaskOn)
     {
+        console.log('background script updateIsMaskOn', isMaskOn)
         // update our state
         this.isMaskOn = isMaskOn
         const tab = await BackgroundScript.getCurrentTab();
@@ -191,20 +214,6 @@ class BackgroundScript
         this.sendMessageToContentScript(tab.id, { type: 'isMaskOn', value: isMaskOn, });
     }
 
-
-    // /**
-    //  * Checks if the content script tab's id should be removed from the ready set.
-    //  * @param {string} url 
-    //  * @param {int} tabId 
-    //  */
-    // checkContentScript(url, tabId)
-    // {
-    //     if (url && !BackgroundScript.isDomainSupported(url))
-    //     {
-    //         this.readyContentScripts.delete(tabId);
-    //     }
-    // }
-
     /**
      * Send the updated url to the active content script.
      * 
@@ -213,12 +222,11 @@ class BackgroundScript
      */
     async urlUpdate(url, tab)
     {
-        console.log('background script urlUpdate');
         if (!tab)
         {
             tab = await BackgroundScript.getCurrentTab();
         }
-        console.log("urlUpdate tab:" , tab);
+        console.log('background script urlUpdate', url, tab);
         this.sendMessageToContentScript(tab.id, { type: 'historyUpdate', value: url, });
     }
 
@@ -229,6 +237,7 @@ class BackgroundScript
      */
     sendMessageToContentScript(tabId, message)
     {
+        console.log('background script sendMessageToContentScript', tabId, message);
         const port = this.contentScriptPorts[tabId];
         if (!port) // !no port, so no content script. this may trigger on every tab without a content script; need to check on this
         {
@@ -255,38 +264,15 @@ class BackgroundScript
         // }
     }
 
-    // /**
-    //  * When a content script signals that it is ready, add it's ID to the ready set
-    //  * 
-    //  * @param {int} tabId 
-    //  * @param {function} sendResponse
-    //  */
-    // contentScriptReady(tabId, sendResponse) 
-    // {
-    //     console.log('background script contentScriptReady');
-    //     // add the content script's tab's ID to the ready set
-        // this.readyContentScripts.add(tabId);
-    //     // send ack
-    //     sendResponse({ acknowledged: true });
-    //     // send any stored messages for the content script
-    //     if (this.storedMessages[tabId])
-    //     {
-    //         console.log('Sending stored messages to content script');
-    //         this.storedMessages[tabId].forEach(message => {
-    //             chrome.tabs.sendMessage(tabId, message);
-    //         });
-    //         this.storedMessages[tabId] = [];
-    //     }
-    // }
-
     /**
      * Set up content script port connection. 
      */
     handleContentScriptPort(port)
     {
+        console.log('background script handleContentScriptPort', port);
         this.contentScriptPorts[port.sender.tab.id] = port;
         port.onDisconnect.addListener(() => {
-            console.log(port.type + " disconnected at background script");
+            console.log(port.name + " disconnected at background script");
             delete this.contentScriptPorts[port.sender.tab.id]; // delete port
             // this.contentScriptPorts.delete(port.sender.tab.id); // delete port
         });
@@ -298,18 +284,18 @@ class BackgroundScript
 
     /**
      * Checks if domain is supported
-     * 
      * @param {string} url 
      * @returns {boolean}
      */
     static isDomainSupported(url)
     {
-        console.log('background script isDomainSupported');
+        console.log('background script isDomainSupported', url);
         return BackgroundScript.targetDomainRegexList.some(regex => regex.test(url));
     }
 
     static async getIsMaskOn()
     {
+        debugger
         console.log('background script getIsMaskOn');
         return new Promise((resolve) => {
             chrome.storage.sync.get('isMaskOn', function(data) 
@@ -350,25 +336,31 @@ function escapeRegExp(string) {
     return string.replace(/[.*+\-?^${}()|[\]\\]/g, '\\$&');
 }
 
-// both chrome.runtime.onInstalled and chrome.runtime.onStartup are called when the extension is installed and the browser has "settled down"
-const backgroundScript = new BackgroundScript();
+if (typeof __TEST_ENV__ === 'undefined' || !__TEST_ENV__) // don't run this in test mode
+{
+    console.log("BACKGROUND SCRIPT WILL INIT")
+    const backgroundScript = new BackgroundScript();
+    backgroundScript.init();
+}
 
-chrome.runtime.onInstalled.addListener(() => 
-{
-    console.log('background script onInstalled');
-    if (!backgroundScript.hasInitialized)
-    {
-        backgroundScript.init();
-    }
-});
+// both chrome.runtime.onInstalled and chrome.runtime.onStartup are called when the extension is installed and the browser has "settled down"
+
+// chrome.runtime.onInstalled.addListener(() => 
+// {
+//     console.log('background script onInstalled');
+//     if (!backgroundScript.hasInitialized)
+//     {
+//         backgroundScript.init();
+//     }
+// });
   
-chrome.runtime.onStartup.addListener(() => 
-{
-    console.log('background script onStartup');
-    if (!backgroundScript.hasInitialized)
-    {
-        backgroundScript.init();
-    }
-});
+// chrome.runtime.onStartup.addListener(() => 
+// {
+//     console.log('background script onStartup');
+//     if (!backgroundScript.hasInitialized)
+//     {
+//         backgroundScript.init();
+//     }
+// });
 
 // (new BackgroundScript()).init();

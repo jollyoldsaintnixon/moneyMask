@@ -123,7 +123,10 @@ export default class WidgetBase
      */
     saveValue(node)
     {
+        // if (!node.dataset.originalValue || node.dataset.originalValue !== node.textContent) // we want to make sure we don't write a masked value as the original value
+        // {
         node.setAttribute('data-original-value', node.textContent);
+        // }
     }
 
     /**

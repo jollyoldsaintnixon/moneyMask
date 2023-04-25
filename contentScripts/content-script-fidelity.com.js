@@ -1,7 +1,7 @@
 // import SummarySidebarWidget from "../domains/fidelity/SummarySidebarWidget.js";
 // import WidgetSearcher from "../domains/WidgetSearcher.js";
 // import WidgetController from "../classes/WidgetController.js";
-import FIDELITY_WIDGET_MAP from "../classes/fidelity/FidelityWidgetMap.js";
+import FIDELITY_WIDGET_MAP from "../classes/UrlsToWidgetsMaps/FidelityUrlsToWidgetsMap.js";
 import ContentScript from "../classes/ContentScript.js";
 (new ContentScript(FIDELITY_WIDGET_MAP)).init();
 
