@@ -83,10 +83,7 @@ export default class BackgroundScript
      */
     handleTabUpdated(tabId, changeInfo, tab) {
         console.log('background script handleTabUpdated', tabId, changeInfo, tab);
-        if (changeInfo.status === 'complete') 
-        {
-            this.updateIcon(tab);
-        }
+        this.updateIcon(tab);
     }
 
     /**
@@ -160,27 +157,27 @@ export default class BackgroundScript
      * 
      * @param {*} tab 
      */
-    updateIcon(tab) {
-        console.log('background script updateIcon', tab);
-        // test for a domain pattern match in the url
-        const iconFileBase = BackgroundScript.isDomainSupported(tab.url) ?  "icons/banditMask" : "icons/noMatch";
-        // check if mask is on
-        const active = this.isMaskOn ? "Active" : "Inactive";
-        const updatedIconPath = iconFileBase + active;
-        // set icon if needed
-        if (this.currentIconPath != updatedIconPath)
+    updateIcon(tab) 
+    {
+        if (!tab) // we don't have a valid tab
         {
-            console.log('updating icon from ', this.currentIconPath, ' to ', updatedIconPath);
-            chrome.action.setIcon({
-                path: {
-                    '16': updatedIconPath + "-16.png",
-                    '48': updatedIconPath + "-48.png",
-                    '128': updatedIconPath +  "-128.png",
-                },
-                tabId: tab.id
-            });
+            console.warn('background script updateIcon no tab');
+            return;
         }
-        this.currentIconPath = updatedIconPath;
+        console.log('background script updateIcon', tab);
+        const active = this.isMaskOn ? "Active" : "Inactive"; // determine whether or not the mask is "on"
+        const iconFileBase = BackgroundScript.isDomainSupported(tab.url) ?  "icons/banditMask" : "icons/noMatch"; // test for a domain pattern match in the url
+        const updatedIconPath = iconFileBase + active;
+        // set the tab
+        console.log('updating icon from ', this.currentIconPath, ' to ', updatedIconPath);
+        chrome.action.setIcon({
+            path: {
+                '16': updatedIconPath + "-16.png",
+                '48': updatedIconPath + "-48.png",
+                '128': updatedIconPath +  "-128.png",
+            },
+            tabId: tab.id
+        });
     }
 
     /**
@@ -289,6 +286,11 @@ export default class BackgroundScript
         console.log('background script getCurrentTab');
         return new Promise((resolve) => {
             chrome.tabs.query({ active: true, currentWindow: true, }, (tabs) => {
+                if (!tabs || !tabs[0])
+                {
+                    console.warn('background script getCurrentTab no tabs');
+                    return;
+                }
                 resolve(tabs[0]);
             });
         });
