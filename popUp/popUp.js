@@ -117,10 +117,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 toggleButton.textContent = "Mask Up";
                 isMaskOn = false;
             }
-            // save the value and send a message
-            // chrome.storage.sync.set({ 'isMaskOn': isMaskOn}, function() {
-            //     chrome.runtime.sendMessage({ type: 'isMaskOn', value: isMaskOn });
-            // });
             chrome.storage.sync.set({ 'isMaskOn': isMaskOn});
         });
     }

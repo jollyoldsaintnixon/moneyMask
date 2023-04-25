@@ -10,7 +10,6 @@ export default class SummarySidebarWidget extends WidgetBase
     accountsTotalSelector = '[class$="acct-selector__balance-wrapper"] > span:nth-child(2)';
     accountsTotal = null; // node that has the total of totals. I memoize it since it is a single node and easy to track.
     groupTotalNodesSelector = '.acct-selector__group-balance'; // each "group" of accounts (ie retirement, custodial, etc) has a total
-    // groupTotalNodes = null; // node list of group total nodes. I memoize it since it is easy to track.
 
     /**
      * Updates the "gain" node for each account (the gain/loss for the day).
@@ -20,20 +19,14 @@ export default class SummarySidebarWidget extends WidgetBase
     maskSecondaryEffects()
     {
         console.log('summaryWidget maskSecondaryEffects')
-        // let total = 0;
         for (const node of this.targetNodeList)
         {
-            // add up the total based on whether or not mask is up
-            // total += this.isMaskOn ? parseFloat(this.maskValue) : this.dollarsToFloat(node.dataset.originalValue);
-            // handle gain/loss for each account
             this.maskGainNodeValue(node);
         }
         // mask total for all accounts
-        // this.maskAccountsTotalValue(total);
         this.maskAccountsTotalValue();
         // mask group total for all accounts
         this.maskGroupTotalValues();
-
         // confirm that the secondary effects have been saved
         if (!this.secondaryEffectValuesSaved)
         {
@@ -48,7 +41,7 @@ export default class SummarySidebarWidget extends WidgetBase
     maskGroupTotalValues()
     {
         console.log("summaryWidget maskGroupTotalValues");
-        const groupTotalNodes = this.getGroupTotalNodes(); // document.querySelectorAll(this.groupTotalNodesSelector);
+        const groupTotalNodes = this.getGroupTotalNodes();
         // subfunction to get common ancestor of targetNode and groupTotalNode
         const getCommonAncestor = (node) =>
         {
@@ -105,7 +98,6 @@ export default class SummarySidebarWidget extends WidgetBase
      * Makes sure you don't save a masked value as the original value
      * @param {float} total
      */ 
-    // maskAccountsTotalValue(total)
     maskAccountsTotalValue()
     {
         console.log("summaryWidget maskAccountsTotalValue")
@@ -161,12 +153,7 @@ export default class SummarySidebarWidget extends WidgetBase
      */
     getGroupTotalNodes()
     {
-        return document.querySelectorAll(this.groupTotalNodesSelector);
-        // if (!this.groupTotalNodes)
-        // {
-            // this.groupTotalNodes = document.querySelectorAll(this.groupTotalNodesSelector);
-        // }
-        // return this.groupTotalNodes;
+        return document.querySelectorAll(this.groupTotalNodesSelector);;
     }
 
     resetSecondaryEffects()

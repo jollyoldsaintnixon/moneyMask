@@ -99,8 +99,6 @@ async function getToInit(contentScript)
     });
     // initialize contentScript
     contentScript.init();
-    // ensure event listeners are set up
-    // await contentScript.handleDocumentLoaded();
 }
 
 /**

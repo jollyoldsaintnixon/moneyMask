@@ -21,12 +21,3 @@ module.exports = {
     filename: '[name].bundle.js',
   },
 };
-
-// module.exports = {
-//   entry: './content-script.js',
-//   output: {
-//     filename: 'bundle.js',
-//     path: path.resolve(__dirname, 'dist'),
-//   },
-//   mode: 'production',
-// };

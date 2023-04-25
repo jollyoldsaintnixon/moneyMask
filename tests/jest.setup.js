@@ -7,4 +7,4 @@ global.chrome = { // add some functions that are missing from the latest jest-ch
         setIcon: jest.fn(),
     },
 };
-jest.setTimeout(50000); // increase the default timeout for jest tests
+jest.setTimeout(60000); // increase the default timeout for jest tests to one minute (this limit is nice when debugging)

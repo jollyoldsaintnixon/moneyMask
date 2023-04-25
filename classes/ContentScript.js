@@ -94,36 +94,4 @@ export default class ContentScript
         console.log('in the contentscript getInitialMaskActivated');
         return chrome.storage.sync.get('isMaskOn').then(data => data.isMaskOn ?? true);
     }
-
-    // /**
-    //  * Lets the background script know that this content script is ready to receive messages. 
-    //  * Retries up to 5 times if the background script doesn't respond.
-    //  * @param {int} retryCount = 0
-    //  * ! Untested
-    //  */
-    // static sendReadyMessageToBackgroundScript() 
-    // static sendReadyMessageToBackgroundScript(retryCount = 0) 
-    // {
-        // this.backgroundScriptPort.postMessage({ type: 'contentScriptReady' });
-        // Send the "ready" message to the background script
-        // chrome.runtime.sendMessage({ type: 'contentScriptReady' }, (response) => {
-        //     // If there's an error, no response, or the response doesn't have the expected property, retry
-        //     if (chrome.runtime.lastError || !response || !response.acknowledged) 
-        //     {
-        //         if (retryCount < 5) 
-        //         {
-        //             setTimeout(() => ContentScript.sendReadyMessageToBackgroundScript(++retryCount), 500);
-        //         } 
-        //         else 
-        //         {
-        //             console.warn('Failed to establish connection with background script after', maxRetries, 'attempts');
-        //         }
-        //     }
-        // });
-    // }
-
-    // static sendMessageToBackgroundScript(message = {})
-    // {
-    //     this.backgroundScriptPort.postMessage(message);
-    // }
 }

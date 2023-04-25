@@ -30,8 +30,6 @@ describe('BackgroundScript', () => {
         
     });
     test('handleTabActivated - tab activation event', async () => {
-        // debugger
-        // await backgroundScript.init();
         const tab = { id: 1, url: targetUrl };
         chrome.tabs.get.mockResolvedValue(tab);
         expect(chrome.tabs.onActivated.hasListeners()).toBe(true)
@@ -44,11 +42,6 @@ describe('BackgroundScript', () => {
             type: 'isMaskOn', 
             value: backgroundScript.isMaskOn 
         });
-
-
-        // (new BackgroundScript());
-        // chrome.tabs.onActivated.call({ tab: 1});
-        // expect(chrome.browserAction.setIcon).toHaveBeenCalled();
     });
     test('updates icon when page is loaded', () => {
         (new BackgroundScript());

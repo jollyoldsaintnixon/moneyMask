@@ -123,10 +123,7 @@ export default class WidgetBase
      */
     saveValue(node)
     {
-        // if (!node.dataset.originalValue || node.dataset.originalValue !== node.textContent) // we want to make sure we don't write a masked value as the original value
-        // {
         node.setAttribute('data-original-value', node.textContent);
-        // }
     }
 
     /**
@@ -176,7 +173,6 @@ export default class WidgetBase
                 if (
                     (mutation.type === 'childList' || mutation.type === 'subtree')
                     && this.getTargetNodes(mutation.addedNodes).length // checks for the targetNodes each time
-                    // && mutation.addedNodes.querySelectorAll(this.targetedNodesSelector).length
                 ) 
                 {
                     try 
@@ -201,18 +197,6 @@ export default class WidgetBase
 
     activateTargetedObserver() 
     {
-        // this.targetedObserver = WidgetBase.createObserver(this.targetNodeList, function(mutations) {
-        //     console.log("target mutations.length: ", mutations.length)
-        //     for (const mutation of mutations)
-        //     {
-        //         if (!this.internalUpdate(mutation) && 
-        //             (mutation.type === 'childList' || mutation.type === 'subtree')) 
-        //         {
-        //             this.saveValues(this.targetNodeList);
-        //             this.maskUp();
-        //         }
-        //     }
-        // }.bind(this), true);
         console.log("widget activateTargetedObserver")
         this.targetedObserver = WidgetBase.createObserver(this.targetNodeList, (mutations) => {
             console.log("widget targetedObserver callback")
@@ -286,7 +270,6 @@ export default class WidgetBase
     findTargetNodes(nodeList = this.nodeToSearch)
     {
         console.log("widget findTargetNodes", nodeList)
-        // const targetNodeList = []; // reset (apparently going from List -> array -> List is the best we can do)
         for (const node of nodeList)
         {
             // check if it's an element and if there are any sub elements that match our target selector
@@ -298,24 +281,6 @@ export default class WidgetBase
         }
         return this.targetNodeList;
     }
-
-    /**
-     * Invoke/reset secondary effects based on isMaskOn.
-     * Effects should be determined by values in targetNodeList.
-     * @returns {void}
-     */
-    // secondaryEffects()
-    // {
-    //     if (this.isMaskOn)
-    //     {
-    //         this.maskSecondaryEffects()
-    //     }
-    //     else
-    //     {
-    //         this.resetSecondaryEffects()
-    //     }
-    //     return;
-    // }
 
     /**
      * Trigger any after/secondary effects here. This should be overwritten in child classes.

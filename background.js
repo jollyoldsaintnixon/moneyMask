@@ -9,12 +9,9 @@ export default class BackgroundScript
         'robinhood.com',
     ].map(domain => new RegExp(`^https?://([a-zA-Z0-9-]+\.)?${escapeRegExp(domain)}`));
 
-    // hasInitialized = false; // used to track if the background script has been initialized
     isMaskOn = undefined; // will be a boolean
     contentScriptPorts = {}; // used for tracking which ports are connected to the background script
     currentIconPath = ""; // set when we update icon. so we don't update it unnecessarily
-    // storedMessages = {}; // used for storing messages that are sent before the content script is ready to receive them
-    // readyContentScripts = new Set(); // used for tracking witch tabs are running content scripts that are ready to receive messages
 
     constructor()
     {
@@ -42,7 +39,6 @@ export default class BackgroundScript
         console.log('isMaskOn', this.isMaskOn);
         const currentTab = await BackgroundScript.getCurrentTab();
         this.updateIcon(currentTab);
-        // this.hasInitialized = true;
     }
 
     setUpListeners()
@@ -54,14 +50,12 @@ export default class BackgroundScript
         chrome.webNavigation.onHistoryStateUpdated.addListener(this.handleOnHistoryStateUpdated); // fired when the URL is changed due to an AJAX-based navigation (i.e., when the URL is updated without a full page reload)
         chrome.tabs.onActivated.addListener(this.handleTabActivated); // fires when the tab gains focus
         chrome.webNavigation.onCompleted.addListener(this.handleFullPageLoad); // fired when a document, including the resources it refers to, is completely loaded and initialized
-        // chrome.runtime.onMessage.addListener(this.checkIsMaskOn)
         chrome.storage.onChanged.addListener(this.handleStorageChange);
     }
 
     handlePortConnect(port)
     {
         console.log('background script handlePortConnect');
-        // console.assert(port.name.endswith('ContentScript'));
         if (port.name.endsWith('ContentScript'))
         {
             this.handleContentScriptPort(port);
@@ -78,10 +72,6 @@ export default class BackgroundScript
     handleMessage(request, sender, sendResponse)
     {
         console.log('background script handleMessage', request, sender, sendResponse);
-        // if (request.type === 'contentScriptReady')
-        // {
-        //     this.contentScriptReady(sender.tab.id, sendResponse);
-        // }
     }
 
     /**
@@ -98,7 +88,6 @@ export default class BackgroundScript
         {
             this.updateIcon(tab);
         }
-        // this.checkContentScript(changeInfo.url, tabId);
     }
 
     /**
@@ -128,7 +117,6 @@ export default class BackgroundScript
         console.log('background script handleFullPageLoad', details);
         chrome.tabs.get(details.tabId, (tab) => {
             this.updateIcon(tab);
-            // this.checkContentScript(details.url, tab.id);
         });
     }
 
@@ -247,21 +235,6 @@ export default class BackgroundScript
         {
             port.postMessage(message);
         }
-        // if (this.readyContentScripts.has(tabId)) // content script is ready
-        // {
-        //     console.log('Sending message to content script', message);
-        //     chrome.tabs.sendMessage(tabId, message);
-        // }
-        // else // content script is not ready
-        // {
-        //     console.warn('Content script not ready in tab', tabId);
-        //     console.warn("Storing message", message);
-        //     if (!this.storedMessages[tabId])
-        //     {
-        //         this.storedMessages[tabId] = [];
-        //     }
-        //     this.storedMessages[tabId].push(message);
-        // }
     }
 
     /**
@@ -274,7 +247,6 @@ export default class BackgroundScript
         port.onDisconnect.addListener(() => {
             console.log(port.name + " disconnected at background script");
             delete this.contentScriptPorts[port.sender.tab.id]; // delete port
-            // this.contentScriptPorts.delete(port.sender.tab.id); // delete port
         });
         port.onMessage.addListener((message) => {
             // * just logging for now
@@ -342,25 +314,3 @@ if (typeof __TEST_ENV__ === 'undefined' || !__TEST_ENV__) // don't run this in t
     const backgroundScript = new BackgroundScript();
     backgroundScript.init();
 }
-
-// both chrome.runtime.onInstalled and chrome.runtime.onStartup are called when the extension is installed and the browser has "settled down"
-
-// chrome.runtime.onInstalled.addListener(() => 
-// {
-//     console.log('background script onInstalled');
-//     if (!backgroundScript.hasInitialized)
-//     {
-//         backgroundScript.init();
-//     }
-// });
-  
-// chrome.runtime.onStartup.addListener(() => 
-// {
-//     console.log('background script onStartup');
-//     if (!backgroundScript.hasInitialized)
-//     {
-//         backgroundScript.init();
-//     }
-// });
-
-// (new BackgroundScript()).init();
