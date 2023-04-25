@@ -118,12 +118,18 @@ export default class WidgetBase
     }
 
     /**
-     * Save the original value of a single node.
+     * Save the original value of a single node so long as no original value has been saved OR the incoming value is not equal to the node's current textContent.
      * @param {Node} node 
+     * @param {string} incomingValue: should be a number or a string representing a number 
      */
-    saveValue(node)
+    saveValue(node, incomingValue = this.maskValue)
     {
-        node.setAttribute('data-original-value', node.textContent);
+        if (!node.textContent
+            || node.textContent == ''
+            || node.textContent != toDollars(incomingValue))
+        {
+            node.setAttribute('data-original-value', node.textContent);
+        }
     }
 
     /**
@@ -177,7 +183,7 @@ export default class WidgetBase
                 {
                     try 
                     {     
-                        this.saveValues(this.getTargetNodes(mutation.addedNodes));
+                        // this.saveValues(this.getTargetNodes(mutation.addedNodes));
                         this.maskUp();
                         this.activateTargetedObserver();
                     } 

@@ -60,16 +60,17 @@ export default class SummarySidebarWidget extends WidgetBase
         // loop through each group total node
         for (const groupTotalNode of groupTotalNodes)
         {
-            // check if first run through
-            if (!this.secondaryEffectValuesSaved)
-            {
-                this.saveValue(groupTotalNode);
-            }
             let groupTotal = null;
             const commonAncestor = getCommonAncestor(groupTotalNode);
             if (commonAncestor)
             {
+                // groupTotal = toDollars(commonAncestor.querySelectorAll(this.targetedNodesSelector).length * this.maskValue);
                 groupTotal = commonAncestor.querySelectorAll(this.targetedNodesSelector).length * this.maskValue;
+            }
+            // check if first run through
+            if (!this.secondaryEffectValuesSaved)
+            {
+                this.saveValue(groupTotalNode, groupTotal);
             }
             groupTotalNode.textContent = toDollars(groupTotal);
         }
@@ -101,13 +102,13 @@ export default class SummarySidebarWidget extends WidgetBase
     maskAccountsTotalValue()
     {
         console.log("summaryWidget maskAccountsTotalValue")
-        const total = toDollars(this.targetNodeList.length * this.maskValue);
+        const total = this.targetNodeList.length * this.maskValue;
 
         if (!this.secondaryEffectValuesSaved && this.getAccountsTotal().textContent !== total)
         {
-            this.saveValue(this.getAccountsTotal());
+            this.saveValue(this.getAccountsTotal(), total);
         }
-        this.getAccountsTotal().textContent = total; 
+        this.getAccountsTotal().textContent = toDollars(total); 
     }
 
     /**
