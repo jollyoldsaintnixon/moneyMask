@@ -33,7 +33,6 @@ export default class BackgroundScript
     */
     async init()
     {
-        debugger
         console.log('background script init');
         this.isMaskOn = await BackgroundScript.getIsMaskOn(); // get the current mask state initially. later update only when user does so
         console.log('isMaskOn', this.isMaskOn);
@@ -99,7 +98,6 @@ export default class BackgroundScript
      */
     handleTabActivated(activeInfo) 
     {
-        debugger
         console.log('background script handleTabActivated', activeInfo);
         chrome.tabs.get(activeInfo.tabId, (tab) => {
           this.updateIcon(tab);
@@ -163,7 +161,6 @@ export default class BackgroundScript
      * @param {*} tab 
      */
     updateIcon(tab) {
-        debugger
         console.log('background script updateIcon', tab);
         // test for a domain pattern match in the url
         const iconFileBase = BackgroundScript.isDomainSupported(tab.url) ?  "icons/banditMask" : "icons/noMatch";
@@ -267,7 +264,6 @@ export default class BackgroundScript
 
     static async getIsMaskOn()
     {
-        debugger
         console.log('background script getIsMaskOn');
         return new Promise((resolve) => {
             chrome.storage.sync.get('isMaskOn', function(data) 

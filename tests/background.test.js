@@ -4,7 +4,6 @@ const { chrome } = global; // this is the mock chrome object from jest-chrome
 // import { chromeMock } from './__mocks__/chrome';
 
 const targetUrl = 'https://www.fidelity.com';
-debugger
 describe('BackgroundScript', () => {
     let backgroundScript;
 
@@ -34,7 +33,6 @@ describe('BackgroundScript', () => {
         chrome.tabs.get.mockResolvedValue(tab);
         expect(chrome.tabs.onActivated.hasListeners()).toBe(true)
         chrome.tabs.onActivated.callListeners({ tabId: 1});
-        debugger;
         await new Promise((resolve) => setTimeout(resolve, 100));
         expect(chrome.tabs.get).toHaveBeenCalledWith(1, expect.any(Function));
         expect(chrome.action.setIcon).toHaveBeenCalledWith(expect.objectContaining({ tabId: tab.id, }));
