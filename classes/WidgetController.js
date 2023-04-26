@@ -21,26 +21,29 @@ export default class WidgetController
 
     /**
      * Tests the regex keys of WIDGET_MAP for a match with the input url. Then
-     * instantiates the widgets that are active under that url.
+     * instantiates the widgets that are active under that url. If the url does not
+     * match, then all widgets are deactivated.
      * 
      * @param {string} url 
      */
     loadWidgets(url)
     {
         console.log("loading widgets for url: ", url)
-        // ? should I deactivate existing widgets here (would I want them running on an unmatched path?)
-        this.deactivateWidgets();
+        let matchingUrlFound = false;
         for (const regex in this.WIDGET_MAP) 
         {
-            if (Object.hasOwnProperty.call(this.WIDGET_MAP, regex)) {
-                if ((new RegExp(regex)).test(url))
-                {
-                    const upcomingWidgets = this.WIDGET_MAP[regex];
-                    this.deactivateWidgets(upcomingWidgets);
-                    this.activateWidgets(upcomingWidgets);
-                    break;
-                }
+            if ((new RegExp(regex)).test(url))
+            {
+                matchingUrlFound = true;
+                const upcomingWidgets = this.WIDGET_MAP[regex];
+                this.deactivateWidgets(upcomingWidgets);
+                this.activateWidgets(upcomingWidgets);
+                break;
             }
+        }
+        if (!matchingUrlFound)
+        {
+            this.deactivateWidgets([]);
         }
     }
 
@@ -54,10 +57,7 @@ export default class WidgetController
         this.maskValue = maskValue; // update the value locally so we can pass it to any widgets that we create later
         for (const widgetClass in this.currentWidgets)  // update all current widgets
         {
-            if (Object.hasOwnProperty.call(this.currentWidgets, widgetClass)) 
-            {
-                this.currentWidgets[widgetClass].updateMaskValue(maskValue);
-            }
+            this.currentWidgets[widgetClass].updateMaskValue(maskValue);
         }
     }
 
@@ -71,28 +71,26 @@ export default class WidgetController
         this.isMaskOn = isMaskOn; // update the value locally so we can pass it to any widgets that we create later
         for (const widgetClass in this.currentWidgets)
         {
-            if (Object.hasOwnProperty.call(this.currentWidgets, widgetClass)) 
-            {
-                this.currentWidgets[widgetClass].updateMaskActivated(isMaskOn);
-            }
+            this.currentWidgets[widgetClass].updateMaskActivated(isMaskOn);
         }
     }
 
     /**
      * Deactivate widgets
+     * @param {array} upcomingWidgets
      */
-    deactivateWidgets(upcomingWidgets) // TODO: I need to consider not deactivate those that should remain active (ie whose targets are unaffected by the history change)
+    deactivateWidgets(upcomingWidgets)
     {
+        upcomingWidgets = upcomingWidgets ?? []; // default to empty array
         console.log("widgetController deactivating widgets. upcomingWidgets: ", upcomingWidgets, " currentWidgets: ", this.currentWidgets);
-        for (const widgetClass in this.currentWidgets) 
+        for (const widgetClassName in this.currentWidgets) 
         {
-            if (Object.hasOwnProperty.call(this.currentWidgets, widgetClass)
-            && upcomingWidgets.none(widget => { // don't deactivate widgets that are still active 
-                return widget.name == widgetClass;
+            if (!upcomingWidgets.some(widget => { // don't deactivate widgets that are still active 
+                return widget.name == widgetClassName;
             })) 
             {
-                this.currentWidgets[widgetClass].deactivate();
-                delete this.currentWidgets[widgetClass]; // only delete those that are no longer active
+                this.currentWidgets[widgetClassName].deactivate();
+                delete this.currentWidgets[widgetClassName]; // only delete those that are no longer active
             }
         }
 
@@ -108,7 +106,7 @@ export default class WidgetController
         console.log("widgetController activating widgets: ", widgetClassArr);
         widgetClassArr.forEach(widgetClass => {
             // only make a new instance if it isn't already running
-            if (!this.currentWidgets[widgetClass])
+            if (!this.currentWidgets[widgetClass.name])
             {
                 this.currentWidgets[widgetClass.name] = new widgetClass(this.maskValue, this.isMaskOn);
             }
