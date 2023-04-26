@@ -6,7 +6,8 @@ import WidgetBase from "../WidgetBase";
 
 export default class SummarySidebarWidget extends WidgetBase 
 {
-    targetedNodesSelector = '[class$="_acct-balance"] > span:nth-child(2)';
+    targetNodeSelector = '[class$="_acct-balance"] > span:nth-child(2)';
+    targetCommonAncestorSelector = '.acct-selector__container';
     accountsTotalSelector = '[class$="acct-selector__balance-wrapper"] > span:nth-child(2)';
     accountsTotal = null; // node that has the total of totals. I memoize it since it is a single node and easy to track.
     groupTotalNodesSelector = '.acct-selector__group-balance'; // each "group" of accounts (ie retirement, custodial, etc) has a total
@@ -27,11 +28,11 @@ export default class SummarySidebarWidget extends WidgetBase
         this.maskAccountsTotalValue();
         // mask group total for all accounts
         this.maskGroupTotalValues();
-        // confirm that the secondary effects have been saved
-        if (!this.secondaryEffectValuesSaved)
-        {
-            this.secondaryEffectValuesSaved = true;
-        }
+        // // confirm that the secondary effects have been saved
+        // if (!this.secondaryEffectValuesSaved)
+        // {
+        //     this.secondaryEffectValuesSaved = true;
+        // }
     }
 
     /**
@@ -43,14 +44,14 @@ export default class SummarySidebarWidget extends WidgetBase
         console.log("summaryWidget maskGroupTotalValues");
         const groupTotalNodes = this.getGroupTotalNodes();
         // subfunction to get common ancestor of targetNode and groupTotalNode
-        const getCommonAncestor = (node) =>
+        const getCommonGroupAncestor = (node) =>
         {
             let ancestor = node;
             for (let i=0; i<10; i++)
             {
                 if (!ancestor.parentElement)
                 {
-                    return null; // was not able to climb to common ancestor
+                    return ancestor; // was not able to climb to common ancestor
                 }
                 ancestor = ancestor.parentElement;
             }
@@ -61,17 +62,16 @@ export default class SummarySidebarWidget extends WidgetBase
         for (const groupTotalNode of groupTotalNodes)
         {
             let groupTotal = null;
-            const commonAncestor = getCommonAncestor(groupTotalNode);
-            if (commonAncestor)
+            const commonGroupAncestor = getCommonGroupAncestor(groupTotalNode);
+            if (commonGroupAncestor)
             {
-                // groupTotal = toDollars(commonAncestor.querySelectorAll(this.targetedNodesSelector).length * this.maskValue);
-                groupTotal = commonAncestor.querySelectorAll(this.targetedNodesSelector).length * this.maskValue;
+                groupTotal = commonGroupAncestor.querySelectorAll(this.targetNodeSelector).length * this.maskValue;
             }
             // check if first run through
-            if (!this.secondaryEffectValuesSaved)
-            {
+            // if (!this.secondaryEffectValuesSaved)
+            // {
                 this.saveValue(groupTotalNode, groupTotal);
-            }
+            // }
             groupTotalNode.textContent = toDollars(groupTotal);
         }
     }
@@ -86,12 +86,13 @@ export default class SummarySidebarWidget extends WidgetBase
         const gainNode = this.getGainNode(targetNode);
         // ensure that there is a gain node for this account
         if (!gainNode) return;
-        if (!this.secondaryEffectValuesSaved)
-        {
-            this.saveValue(gainNode);
-        }
         const originalNodeDollars = targetNode.dataset.originalValue;
-        gainNode.textContent = this.makeProportions(originalNodeDollars, gainNode.textContent);
+        const proportion = this.makeProportions(originalNodeDollars, gainNode.textContent);
+        // if (!this.secondaryEffectValuesSaved)
+        // {
+            this.saveValue(gainNode, proportion);
+        // }
+        gainNode.textContent = toDollars(proportion);
     }
 
     /**
@@ -104,10 +105,10 @@ export default class SummarySidebarWidget extends WidgetBase
         console.log("summaryWidget maskAccountsTotalValue")
         const total = this.targetNodeList.length * this.maskValue;
 
-        if (!this.secondaryEffectValuesSaved && this.getAccountsTotal().textContent !== total)
-        {
+        // if (!this.secondaryEffectValuesSaved && this.getAccountsTotal().textContent !== total)
+        // {
             this.saveValue(this.getAccountsTotal(), total);
-        }
+        // }
         this.getAccountsTotal().textContent = toDollars(total); 
     }
 

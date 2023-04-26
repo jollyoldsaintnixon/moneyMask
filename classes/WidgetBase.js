@@ -14,12 +14,18 @@ export default class WidgetBase
     maskValue = 100;
     isMaskOn = false;
 
-    targetValuesSaved = false;
-    secondaryEffectValuesSaved = false;
+    // targetValuesSaved = false;
+    // secondaryEffectValuesSaved = false;
 
     targetNodeList = arrayToList([]); 
-    targetedNodesSelector = document.querySelectorAll('body'); // * Overwrite in child.
-    searchedNodeList = document.querySelectorAll('body'); // ? Is this necessary?
+
+    targetNodeSelector = 'body'; // * This should locate any target node. Overwrite in child.
+    targetCommonAncestorSelector = 'body'; // * This should select the overarching container of the widget. Overwrite in child.
+    wideAreaSearchSelector = 'body'; // probably does not need to be overwritten
+
+    targetCommonAncestorNode = null; // * This is the overarching container of the widget.
+    wideAreaSearchNode = null; // this should very likely be the entire body
+
 
     searchingObserver; // runs until targets found
     targetedObserver; // only watches targets
@@ -72,11 +78,11 @@ export default class WidgetBase
         {
             return;
         }
-        if (!this.targetValuesSaved)
-        {
+        // if (!this.targetValuesSaved)
+        // {
             this.saveValues(this.targetNodeList);
-            this.targetValuesSaved = true;
-        }
+            // this.targetValuesSaved = true;
+        // }
         for (const ele of this.targetNodeList)
         {
             ele.textContent = toDollars(this.maskValue);
@@ -120,13 +126,15 @@ export default class WidgetBase
     /**
      * Save the original value of a single node so long as no original value has been saved OR the incoming value is not equal to the node's current textContent.
      * @param {Node} node 
-     * @param {string} incomingValue: should be a number or a string representing a number 
+     * @param {int|float} incomingValue: should be a number or a string representing a number 
      */
     saveValue(node, incomingValue = this.maskValue)
     {
-        if (!node.textContent
-            || node.textContent == ''
-            || node.textContent != toDollars(incomingValue))
+        incomingValue = toDollars(incomingValue);
+        if (!node.dataset.originalValue // do save if nothing is there
+            || node.dataset.originalValue == '' // do save if empty string
+            // || node.textContent != toDollars(incomingValue))
+            || node.textContent != incomingValue) // but if there is something there, do not save if the incoming value is the same as the current value
         {
             node.setAttribute('data-original-value', node.textContent);
         }
@@ -140,24 +148,27 @@ export default class WidgetBase
     {
         console.log("widget maskDown")
         // make sure we have values to restore
-        if (this.targetValuesSaved)
-        {
+        // if (this.targetValuesSaved)
+        // {
             for (const node of this.targetNodeList)
             {
                 this.resetNodeValue(node);
             }
             this.resetSecondaryEffects();
-        }
+        // }
     }
 
     /**
-     * Restore the original values of the node
+     * Restore the original values of the node, but check first if the node has an original value saved.
      * @param {Node} node 
      */
     resetNodeValue(node)
     {
         console.log("widget resetNodeValue", node)
-        node.textContent = node.dataset.originalValue;
+        if (node.dataset.originalValue)
+        {
+            node.textContent = node.dataset.originalValue;
+        }
     }
 
     /**
@@ -166,12 +177,13 @@ export default class WidgetBase
      * the unmasked monetary value; once that element is loaded, it should deactivate.
      * Monitoring then passes to the targetedObserver, which only watches the 
      * specific elements we care about.
-     * ?  could we simply change the searchedNodeList to the targetNodeList?
+     * ?  could we simply change the wideAreaSearchSelector to the targetNodeList?
      */
     activateSearchingObserver() 
     {
+        this.wideAreaSearchNode = this.wideAreaSearchNode ?? document.querySelectorAll(this.wideAreaSearchSelector); // set wideAreaSearchNode if it is not already set
         console.log("widget activateSearchingObserver")
-        this.searchingObserver = WidgetBase.createObserver(this.searchedNodeList, (mutations) => {
+        this.searchingObserver = WidgetBase.createObserver(this.wideAreaSearchNode, (mutations) => {
             console.log("widget activateSearchingObserver callback")
             console.log("search mutations.length: ", mutations.length)
             for (const mutation of mutations) 
@@ -183,7 +195,6 @@ export default class WidgetBase
                 {
                     try 
                     {     
-                        // this.saveValues(this.getTargetNodes(mutation.addedNodes));
                         this.maskUp();
                         this.activateTargetedObserver();
                     } 
@@ -203,23 +214,23 @@ export default class WidgetBase
 
     activateTargetedObserver() 
     {
+        this.targetCommonAncestorNode = this.targetCommonAncestorNode ?? document.querySelectorAll(this.targetCommonAncestorSelector); // set targetCommonAncestorNode if it is not already set
         console.log("widget activateTargetedObserver")
-        this.targetedObserver = WidgetBase.createObserver(this.targetNodeList, (mutations) => {
+        this.targetedObserver = WidgetBase.createObserver(this.targetCommonAncestorNode, (mutations) => {
             console.log("widget targetedObserver callback")
             console.log("target mutations.length: ", mutations.length)
             for (const mutation of mutations)
             {
                 if (!this.internalUpdate(mutation) && 
                     (mutation.type === 'childList' || mutation.type === 'subtree')
-                    && this.refreshTargetNodes().length) 
+                    && this.refreshTargetNodes(this.targetCommonAncestorNode).length) 
                 {
-                    this.secondaryEffectValuesSaved = false; // we need to save the secondary values again since those nodes have also been updated
-                    this.saveValues(this.targetNodeList);
+                    // this.secondaryEffectValuesSaved = false; // we need to save the secondary values again since those nodes have also been updated
                     this.maskUp();
                     break; // break out of the loop for efficiency
                 }
             }
-        }, true);
+        });
     }
 
     /**
@@ -239,7 +250,7 @@ export default class WidgetBase
      * Returns the targetNodeList and saves it to this.targetNodeList if it's empty.
      * @param {NodeList} nodeList 
      */
-    getTargetNodes(nodeList = this.searchedNodeList)
+    getTargetNodes(nodeList = this.wideAreaSearchNode)
     {
         console.log("widget targetNodeList")
         if (this.targetNodeList.length) // short circuit
@@ -255,7 +266,7 @@ export default class WidgetBase
      * @param {NodeList} nodeList 
      * @returns {NodeList} targetNodeList
      */
-    refreshTargetNodes(nodeList = this.searchedNodeList)
+    refreshTargetNodes(nodeList = this.wideAreaSearchNode)
     {
         console.log("widget refreshTargetNodes", nodeList)
         const targetNodeList = this.findTargetNodes(nodeList);
@@ -267,7 +278,7 @@ export default class WidgetBase
     }
 
     /**
-     * ! Be sure to overwrite "targetedNodesSelector" in child class. 
+     * ! Be sure to overwrite "targetNodeSelector" in child class. 
      * Returns the nodes that the widget should update. 
      * * Will overwrite this.targetNodeList if any matches are found.
      * 
@@ -279,9 +290,9 @@ export default class WidgetBase
         for (const node of nodeList)
         {
             // check if it's an element and if there are any sub elements that match our target selector
-            if (node.nodeType === Node.ELEMENT_NODE && node.querySelectorAll(this.targetedNodesSelector).length)
+            if (node.nodeType === Node.ELEMENT_NODE && node.querySelectorAll(this.targetNodeSelector).length)
             {
-                this.targetNodeList = node.querySelectorAll(this.targetedNodesSelector);
+                this.targetNodeList = node.querySelectorAll(this.targetNodeSelector);
                 break;
             }
         }
@@ -311,12 +322,12 @@ export default class WidgetBase
      * Convert the old fraction to a amount based on the mask value.
      * @param {string} totalDollars the original total
      * @param {string} proportionDollars the fraction of the totalDollars
-     * @returns 
+     * @returns {float}
      */
     makeProportions(totalDollars, proportionDollars)
     {
         const proportion = dollarsToFloat(proportionDollars) / dollarsToFloat(totalDollars);
-        return toDollars(this.maskValue * proportion);
+        return this.maskValue * proportion;
     }
 
     /**
@@ -330,7 +341,7 @@ export default class WidgetBase
      * @param {boolean} watchAncestor whether to watch the parent node or the node itself
      * @returns 
      */
-    static createObserver(nodeList, observerCallBack, watchAncestor = false)
+    static createObserver(nodeList, observerCallBack, watchAncestor = false, watchAncestorDepth = 5)
     {
         // console.log("base createObserver")
         const observer = new MutationObserver(observerCallBack);
@@ -339,7 +350,7 @@ export default class WidgetBase
         {
             if (watchAncestor) // if we want to watch the ancestor, crawl on up the tree. the loop count is based on trial and error.
             {
-                for (let i=0; i<5; i++)
+                for (let i=0; i<watchAncestorDepth; i++)
                 {
                     node = node.parentElement;
                 }
