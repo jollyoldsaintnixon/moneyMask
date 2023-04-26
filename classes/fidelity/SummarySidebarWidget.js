@@ -28,11 +28,6 @@ export default class SummarySidebarWidget extends WidgetBase
         this.maskAccountsTotalValue();
         // mask group total for all accounts
         this.maskGroupTotalValues();
-        // // confirm that the secondary effects have been saved
-        // if (!this.secondaryEffectValuesSaved)
-        // {
-        //     this.secondaryEffectValuesSaved = true;
-        // }
     }
 
     /**
@@ -67,11 +62,7 @@ export default class SummarySidebarWidget extends WidgetBase
             {
                 groupTotal = commonGroupAncestor.querySelectorAll(this.targetNodeSelector).length * this.maskValue;
             }
-            // check if first run through
-            // if (!this.secondaryEffectValuesSaved)
-            // {
-                this.saveValue(groupTotalNode, groupTotal);
-            // }
+            this.saveValue(groupTotalNode, groupTotal);
             groupTotalNode.textContent = toDollars(groupTotal);
         }
     }
@@ -88,10 +79,7 @@ export default class SummarySidebarWidget extends WidgetBase
         if (!gainNode) return;
         const originalNodeDollars = targetNode.dataset.originalValue;
         const proportion = this.makeProportions(originalNodeDollars, gainNode.textContent);
-        // if (!this.secondaryEffectValuesSaved)
-        // {
-            this.saveValue(gainNode, proportion);
-        // }
+        this.saveValue(gainNode, proportion);
         gainNode.textContent = toDollars(proportion);
     }
 
