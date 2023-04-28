@@ -1,14 +1,12 @@
 import { toDollars } from "../helpers";
 import WidgetBase from "../WidgetBase";
 
-"acct-selector__all-accounts-balance" // total for all accounts
-"acct-selector__acct-balance" // specific account, it's a div and the actual balance is the second span
-
 export default class SummarySidebarWidget extends WidgetBase 
 {
     targetNodeSelector = '[class$="_acct-balance"] > span:nth-child(2)';
     targetCommonAncestorSelector = '.acct-selector__container';
-    accountsTotalSelector = '[class$="acct-selector__balance-wrapper"] > span:nth-child(2)';
+    // accountsTotalSelector = '[class$="acct-selector__balance-wrapper"] > span:nth-child(2)';
+    accountsTotalSelector = '.acct-selector__all-accounts > div:nth-child(2) > span:nth-child(2)';
     accountsTotal = null; // node that has the total of totals. I memoize it since it is a single node and easy to track.
     groupTotalNodesSelector = '.acct-selector__group-balance'; // each "group" of accounts (ie retirement, custodial, etc) has a total
 

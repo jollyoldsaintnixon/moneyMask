@@ -14,9 +14,6 @@ export default class WidgetBase
     maskValue = 100;
     isMaskOn = false;
 
-    // targetValuesSaved = false;
-    // secondaryEffectValuesSaved = false;
-
     targetNodeList = arrayToList([]); 
 
     targetNodeSelector = 'body'; // * This should locate any target node. Overwrite in child.
@@ -78,11 +75,7 @@ export default class WidgetBase
         {
             return;
         }
-        // if (!this.targetValuesSaved)
-        // {
-            this.saveValues(this.targetNodeList);
-            // this.targetValuesSaved = true;
-        // }
+        this.saveValues(this.targetNodeList);
         for (const ele of this.targetNodeList)
         {
             ele.textContent = toDollars(this.maskValue);
@@ -148,14 +141,11 @@ export default class WidgetBase
     {
         console.log("widget maskDown")
         // make sure we have values to restore
-        // if (this.targetValuesSaved)
-        // {
-            for (const node of this.targetNodeList)
-            {
-                this.resetNodeValue(node);
-            }
-            this.resetSecondaryEffects();
-        // }
+        for (const node of this.targetNodeList)
+        {
+            this.resetNodeValue(node);
+        }
+        this.resetSecondaryEffects();
     }
 
     /**
