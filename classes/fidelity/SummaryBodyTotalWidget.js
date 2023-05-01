@@ -15,13 +15,16 @@ export default class SummaryBodyTotalWidget extends OnlySecondaryWidgetBase
 {
     targetNodeSelector = '.total-balance__value';
     targetCommonAncestorSelector = 'summary-panel'; // it is an element
+    listenersInitiated = false; // this will listen for clicks on the common ancestor. The portfolio and gain nodes can be replaced when the user clicks on the common ancestor.
     catalystSelector = '.acct-selector__all-accounts > div:nth-child(2) > span:nth-child(2)';
-    gainNodeSelector = 'today-change-value > span:first-child';
+    portfolioNode = null; // the node that shows the total portfolio value
+    gainNodeSelector = '.today-change-value > span:first-child';
     gainNode = null; // this will be the node that shows the total portfolio gain/loss for the day
-    percentNodeSelector = 'today-change-value > span:nth-child(2)';
-    // accountsTotalSelector = '.total-balance__value';
-    // accountsTotalNode = null; // node that has the total of totals. I memoize it since it is a single node and easy to track.
-    // groupTotalNodesSelector = '.acct-selector__group-balance'; // each "group" of accounts (ie retirement, custodial, etc) has a total
+    percentNodeSelector = '.today-change-value > span:nth-child(2)';
+    percentNode = null; // this represents the percent change for the day
+   
+    graphNode = null;
+    graphObserver = null; // this will be the observer that watches for changes to a graph that reloads/replaces gain nodes
 
     /**
      * Updates the "gain" node for each account (the gain/loss for the day).
@@ -31,6 +34,11 @@ export default class SummaryBodyTotalWidget extends OnlySecondaryWidgetBase
     maskSecondaryEffects()
     {
         console.log('summaryBodyTotalWidget maskSecondaryEffects')
+        if (!this.listenersInitiated) // only listen once
+        {
+            this.initiateListeners();
+            this.listenersInitiated = true;
+        }
         this.maskPortfolioTotalNode();
         this.maskPorfolioTotalGainNode();
     }
@@ -43,37 +51,98 @@ export default class SummaryBodyTotalWidget extends OnlySecondaryWidgetBase
         const catalystText = this.getCatalystText();
         if (catalystText.length) // we found the catalyst node and it had text
         {
-            for (const node of this.getTargetNodes(this.getCommonAncestorNode()))
-            {
-                node.textContent = catalystText;
-            }
+            this.getPortfolioTotalNode().textContent = catalystText;
         }
     }
 
     /**
-     * 
+     * The gain node should be related to the first target node found based on the common ancestor node.
      */
     maskPorfolioTotalGainNode()
     {
-        const gainNode = document
+        const strippedTotal = stripToNumber(this.getPortfolioTotalNode().textContent);
+        const strippedPercentChange = stripToNumber((this.getPercentNode().textContent ?? "0"));
+        this.getGainNode(this.getPortfolioTotalNode()).textContent = toDollars(strippedTotal * (strippedPercentChange / 100));
+    }
+
+    /**
+     * Certain actions can reset/reload the gain nodes. These listen for those events
+     */
+    initiateListeners()
+    {
+        this.initCommonAncestorListener();
+        this.watchForHighCharts(); // the graphs are loaded after the page loads, so we need to watch for them
+    }
+
+    initCommonAncestorListener()
+    {
+        this.getCommonAncestorNode().addEventListener('click', this._listenerCallBack.bind(this));
+    }
+
+    watchForHighCharts()
+    {
+        this.graphObserver = WidgetBase.createObserver(this.getCommonAncestorNode(), function(mutations) {
+            console.log('summaryBodyTotalWidget watchForHighCharts callback');
+            for (const mutation of mutations)
+            {
+                if ((mutation.type === 'childList' || mutation.type === 'subtree')
+                    && this.graphWasFound(mutation.addedNodes)
+                    )
+                {
+                    this.initHighChartsListener(this.graphNode); // this.graphNode is set by this.graphWasFound() if any nodes were found
+                    break;
+                }
+            }
+        }.bind(this));
+    }
+
+    /**
+     * 
+     * @param {Node} graphNode 
+     */
+    initHighChartsListener(graphNode)
+    {
+        // graphNode.forEach(graph => {
+            // graphNode.addEventListener('click', this._listenerCallBack.bind(this));
+            // graphNode.addEventListener('mouseover', this._listenerCallBack.bind(this));
+            graphNode.addEventListener('mouseleave', this._listenerCallBack.bind(this)); // triggers when leaving element (but not children)
+            // graphNode.addEventListener('mouseout', this._listenerCallBack.bind(this)); // triggers when leaving element or any child
+        // });
+    }
+
+    _listenerCallBack()
+    {
+        console.log('summaryBodyTotal event listenerCallBack');
+        this.maskPorfolioTotalGainNode();
+    }
+
+    /**
+     * Should be the first node in the list of target nodes under the common ancestor.
+     * @returns {Node} the node that shows the total value of all accounts
+     */
+    getPortfolioTotalNode()
+    {
+        this.portfolioNode = this.portfolioNode ?? this.getTargetNodes(this.getCommonAncestorNode())[0];
+        return this.portfolioNode;
     }
 
     getCommonAncestorNode()
     {
         if (!this.targetCommonAncestorNode)
         {
-            this.targetCommonAncestorNode = document.querySelectorAll(this.targetCommonAncestorSelector);
+            this.targetCommonAncestorNode = document.querySelector(this.targetCommonAncestorSelector);
         }
         return this.targetCommonAncestorNode;
     }
 
-    getGainNOde()
+    getPercentNode()
     {
-        if (!this.gainNode)
-        {
-            this.gainNode = document.querySelectorAll(this.gainNodeSelector);
-        }
-        return this.gainNode;
+        return document.querySelector(this.percentNodeSelector);
+        // if (!this.percentNode || !this.percentNode.length)
+        // {
+            // this.percentNode = document.querySelector(this.percentNodeSelector);
+        // }
+        // return this.percentNode;
     }
 
     /**
@@ -91,62 +160,47 @@ export default class SummaryBodyTotalWidget extends OnlySecondaryWidgetBase
     }
 
     /**
-     * Update the gain/loss value for each account.
-     * @param {Node} targetNode 
-     */
-    maskGainNodeValue(targetNode)
-    {
-        console.log("summaryWidget maskGainNodeValue", targetNode)
-        const gainNode = this.getGainNode(targetNode);
-        // ensure that there is a gain node for this account
-        if (!gainNode) return;
-        const originalNodeDollars = targetNode.dataset.originalValue;
-        const proportion = this.makeProportions(originalNodeDollars, gainNode.textContent);
-        // if (!this.secondaryEffectValuesSaved)
-        // {
-            this.saveValue(gainNode, proportion);
-        // }
-        gainNode.textContent = toDollars(proportion);
-    }
-
-    /**
      * Get the gain/loss node for the given node.
      * The gain node is the node with the daily gain/loss value.
+     * Memoize it since it should remain in place once added.
      * 
      * @param {Node} starterNode 
      * @returns Node|null
      */
     getGainNode(starterNode)
     {
-        console.log('summaryWidget getGainNode', starterNode);
-        let gainNode = null;
+        console.log('summaryBodyTotalWidget getGainNode', starterNode);
+        // if (this.gainNode) return this.gainNode; // short circuit if already found
         try
         {
-            gainNode = starterNode.parentElement.nextElementSibling.childNodes[1];
+            this.gainNode = starterNode.parentElement.nextElementSibling.childNodes[1];
         }
         catch (error)
         {
             // console.warn('did not find gain node');
         }
-        return gainNode
+        return this.gainNode;
     }
 
-    // resetSecondaryEffects()
-    // {
-    //     console.log("summaryWidget resetSecondaryEffects");
-    //     for (const node of this.targetNodeList)
-    //     {
-    //         this.resetGainNodeValue(node);
-    //     }
-    //     this.resetAccountsTotalValue();
-    //     this.resetGroupTotalValues();
-    // }
-
-    // resetGainNodeValue(node)
-    // {
-    //     console.log("summaryWidget resetGainNodeValue", node)
-    //     const gainNode = this.getGainNode(node);
-    //     if (!gainNode) return;
-    //     this.resetNodeValue(gainNode);
-    // }
+    /**
+     * Looks for graphs and sets the graphNode property if some are found.
+     * @return {boolean} true if graphs were found, false otherwise
+     */
+    graphWasFound(nodes)
+    {
+        if (!nodes || !nodes.length) return false;
+        for (const node of nodes)
+        {
+            if (node.parentElement) // look one node of so we can do a query on all descendants
+            {
+                const graphNode = node.parentElement.querySelector("#balance-charts"); // there may be more than one, hard to know
+                if (graphNode)
+                {
+                    this.graphNode = graphNode;
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
 }
