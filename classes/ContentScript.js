@@ -46,7 +46,7 @@ export default class ContentScript
         // set up port
         this.backgroundScriptPort = chrome.runtime.connect({ name: "ContentScript" });
         this.backgroundScriptPort.onDisconnect.addListener(() => {
-            console.warn("background script disconnected");
+            // console.warn("background script disconnected");
         });
         // listen for messages from the background script. pass to controller when applicable
         this.backgroundScriptPort.onMessage.addListener(this.handleMessageFromBackgroundScript);

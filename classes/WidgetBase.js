@@ -1,7 +1,7 @@
-import { 
-    arrayToList,
+import {
     toDollars,
     dollarsToFloat,
+    arrayToList,
  } from "./helpers";
 
 export default class WidgetBase 
@@ -14,7 +14,7 @@ export default class WidgetBase
     maskValue = 100;
     isMaskOn = false;
 
-    targetNodeList = arrayToList([]); 
+    targetNodeList = arrayToList([]); // initialize as empty list 
 
     targetNodeSelector = 'body'; // * This should locate any target node. Overwrite in child.
     targetCommonAncestorSelector = 'body'; // * This should select the overarching container of the widget. Overwrite in child.

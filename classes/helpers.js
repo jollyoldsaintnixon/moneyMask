@@ -29,7 +29,7 @@ export function toDollars(value)
     const formatter = new Intl.NumberFormat('en-US', {
         style: 'currency',
         currency: 'USD',
-        minimumFractionDigits: 0,
+        minimumFractionDigits: 2,
         maximumFractionDigits: 2,
     });
     return formatter.format(value);
@@ -60,4 +60,9 @@ export function bindHandlers(that)
             that[key] = that[key].bind(that);
         }
     }
+}
+
+export function stripToNumber(value)
+{
+    return parseFloat(value.replace(/[^0-9.-]+/g,""));
 }

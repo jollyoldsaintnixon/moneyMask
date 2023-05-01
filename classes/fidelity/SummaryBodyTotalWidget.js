@@ -1,6 +1,16 @@
-import { toDollars } from "../helpers";
+import { 
+    toDollars, 
+    stripToNumber, 
+    arrayToList
+} from "../helpers";
 import OnlySecondaryWidgetBase from "../OnlySecondaryWidgetBase";
+import WidgetBase from "../WidgetBase";
 
+/**
+ * This class targets a particular "square" in the summary panel that shows 
+ * the total value of all accounts. It is a secondary widget because changes
+ * are determined by changes in a node outside of its scope.
+ */
 export default class SummaryBodyTotalWidget extends OnlySecondaryWidgetBase 
 {
     targetNodeSelector = '.total-balance__value';
@@ -23,14 +33,6 @@ export default class SummaryBodyTotalWidget extends OnlySecondaryWidgetBase
         console.log('summaryBodyTotalWidget maskSecondaryEffects')
         this.maskPortfolioTotalNode();
         this.maskPorfolioTotalGainNode();
-        // for (const node of this.targetNodeList)
-        // {
-        //     this.maskGainNodeValue(node);
-        // }
-        // // mask total for all accounts
-        // this.maskAccountsTotalValue();
-        // // mask group total for all accounts
-        // this.maskGroupTotalValues();
     }
 
     /**
