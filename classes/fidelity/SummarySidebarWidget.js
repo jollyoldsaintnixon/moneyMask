@@ -89,7 +89,7 @@ export default class SummarySidebarWidget extends WidgetBase
     maskAccountsTotalValue()
     {
         console.log("summaryWidget maskAccountsTotalValue")
-        const total = this.targetNodeList.length * this.maskValue;
+        const total = this.getTargetNodes().length * this.maskValue;
 
         // if (!this.secondaryEffectValuesSaved && this.getAccountsTotal().textContent !== total)
         // {
