@@ -46,20 +46,58 @@ export default class WidgetBase
     {
         console.log("widget updateMaskValue", maskValue)
         this.maskValue = maskValue;
-        this.maskUp();
+        // determine if we need to update the displayed mask
+        if (this.isMaskOn)
+        {
+            this.updateDisplayedMaskValue();
+        }
     }
 
-    updateMaskActivated(isMaskOn)
+    updateDisplayedMaskValue()
     {
-        console.log("widget updateMaskActivated", isMaskOn)
-        this.isMaskOn = isMaskOn;
-        if (isMaskOn)
+        console.log("widget updateDisplayedMaskValue")
+        for (const ele of this.targetNodeList)
         {
+            ele.textContent = toDollars(this.maskValue);
+        }
+    }
+
+    /**
+     * This is the main function that should be called when the mask is toggled. Sets this.isMaskOn to the new value, then calls the appropriate function.
+     * @param {bool} incomingIsMaskOn 
+     */
+    updateMaskActivated(incomingIsMaskOn)
+    {
+        console.log("widget updateMaskActivated", incomingIsMaskOn)
+        if (incomingIsMaskOn)
+        {
+            if (!this.isMaskOn) // if the mask was down, save the values before putting it up
+            {
+                this.saveValues(this.targetNodeList);
+            }
             this.maskUp();
         }
         else
         {
             this.maskDown();
+        }
+        this.isMaskOn = incomingIsMaskOn;
+        // incomingIsMaskOn ? this.maskUp() : this.maskDown();
+        // this.maskUpOrDownSwitch();
+    }
+
+    /**
+     * Determines the action to take based on the current mask state.
+     */
+    maskUpOrDownSwitch()
+    {
+        if (this.isMaskOn)
+        {
+            this.updateDisplayedMaskValue();
+        }
+        else
+        {
+            this.saveValues(this.targetNodeList);
         }
     }
     
@@ -70,16 +108,13 @@ export default class WidgetBase
     maskUp()
     {
         console.log("widget maskUp")
-        // we only want to change things if the mask if activated
-        if (!this.isMaskOn)
-        {
-            return;
-        }
-        this.saveValues(this.targetNodeList);
-        for (const ele of this.targetNodeList)
-        {
-            ele.textContent = toDollars(this.maskValue);
-        }
+
+        // this.saveValues(this.targetNodeList);
+        // for (const ele of this.targetNodeList)
+        // {
+        //     ele.textContent = toDollars(this.maskValue);
+        // }
+        this.updateDisplayedMaskValue();
         this.maskSecondaryEffects();
     }
 
@@ -124,13 +159,15 @@ export default class WidgetBase
     saveValue(node, incomingValue = this.maskValue)
     {
         incomingValue = toDollars(incomingValue);
-        if (!node.dataset.originalValue // do save if nothing is there
-            || node.dataset.originalValue == '' // do save if empty string
-            // || node.textContent != toDollars(incomingValue))
-            || node.textContent != incomingValue) // but if there is something there, do not save if the incoming value is the same as the current value
-        {
+        // if (!node.dataset.originalValue // do save if nothing is there
+        //     || node.dataset.originalValue == '' // do save if empty string
+        //     // || node.textContent != toDollars(incomingValue))
+        //     || node.textContent != incomingValue) // but if there is something there, do not save if the incoming value is the same as the current value
+        // if (!node.dataset.originalValue) // save if not saved already // ! this works but I don't like it- we want to be able to see the changing values
+        // if (this.isMaskOn) // this should only trigger when we are in the process of putting the mask on/up
+        // {
             node.setAttribute('data-original-value', node.textContent);
-        }
+        // }
     }
 
     /**
@@ -146,6 +183,7 @@ export default class WidgetBase
             this.resetNodeValue(node);
         }
         this.resetSecondaryEffects();
+        this.isMaskOn = false;
     }
 
     /**
@@ -184,8 +222,13 @@ export default class WidgetBase
                 ) 
                 {
                     try 
-                    {     
-                        this.maskUp();
+                    {    
+                        // this triggers the very first time (and only the first time) that the target nodes are found. Save values regardless of isMaskOn state. Then maskUp if isMaskOn.
+                        this.saveValues(this.targetNodeList);
+                        if (this.isMaskOn)
+                        {
+                            this.maskUp();
+                        }
                         this.activateTargetedObserver();
                     } 
                     catch (error) 
@@ -211,12 +254,16 @@ export default class WidgetBase
             console.log("target mutations.length: ", mutations.length)
             for (const mutation of mutations)
             {
-                if (!this.internalUpdate(mutation) && 
-                    (mutation.type === 'childList' || mutation.type === 'subtree')
-                    && this.refreshTargetNodes(this.targetCommonAncestorNode).length) 
+                // if (!this.internalUpdate(mutation) 
+                // && (mutation.type === 'childList' || mutation.type === 'subtree')
+                if ((mutation.type === 'childList' || mutation.type === 'subtree')
+                    && this.refreshTargetNodes(this.targetCommonAncestorNode).length) // this.targetNodeList will be set here
                 {
-                    // this.secondaryEffectValuesSaved = false; // we need to save the secondary values again since those nodes have also been updated
-                    this.maskUp();
+                    if (this.unsavedNodes(this.targetNodeList)) // see if there are any nodes that have not been saved
+                    {
+                        this.saveValues(this.targetNodeList);
+                    }
+                    this.maskUpOrDownSwitch();
                     break; // break out of the loop for efficiency
                 }
             }
@@ -224,26 +271,53 @@ export default class WidgetBase
     }
 
     /**
-     * Returns true if the mutation was a result of our own maskUp. This is to
-     * prevent infinite loops. (Technically returns true if the textContent of the mutated node is the same as this.maskValue.)
-     * @param {MutationRecord} mutation 
+     * Check if the node has dataset.originalValue set. Return true if not set.
+     * @param {NodeList|Node} nodes 
      * @returns {boolean}
      */
-    internalUpdate(mutation)
+    unsavedNodes(nodes)
     {
-        console.log("widget internalUpdate")
-        return mutation.target.textContent == toDollars(this.maskValue)
+        if (nodes instanceof NodeList)
+        {
+            for (const node of nodes)
+            {
+                if (!node.dataset.originalValue)
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
+        else // single node
+        {
+            if (!nodes.dataset.originalValue)
+            {
+                return true;
+            }
+        }
     }
+
+    // /**
+    //  * Returns true if the mutation was a result of our own maskUp. This is to
+    //  * prevent infinite loops. (Technically returns true if the textContent of the mutated node is the same as this.maskValue.)
+    //  * @param {MutationRecord} mutation 
+    //  * @returns {boolean}
+    //  */
+    // internalUpdate(mutation)
+    // {
+    //     console.log("widget internalUpdate")
+    //     return mutation.target.textContent == toDollars(this.maskValue)
+    // }
 
     /**
      * Search the nodeList for the target nodes. Short circuits if the targetNodeList already found.
      * Returns the targetNodeList and saves it to this.targetNodeList if it's empty.
-     * @param {NodeList} nodeList 
+     * @param {NodeList|Node} nodeList 
      */
     getTargetNodes(nodeList = this.wideAreaSearchNode)
     {
         console.log("widget targetNodeList")
-        if (this.targetNodeList.length) // short circuit
+        if (this.targetNodeList && this.targetNodeList.length) // short circuit
         {
             return this.targetNodeList;
         }
@@ -253,7 +327,7 @@ export default class WidgetBase
 
     /**
      * Searches again for target nodes. If any found, resets current targetNodeList to the new targets nodes
-     * @param {NodeList} nodeList 
+     * @param {NodeList|Node} nodeList 
      * @returns {NodeList} targetNodeList
      */
     refreshTargetNodes(nodeList = this.wideAreaSearchNode)
@@ -272,19 +346,32 @@ export default class WidgetBase
      * Returns the nodes that the widget should update. 
      * * Will overwrite this.targetNodeList if any matches are found.
      * 
-     * @returns {List<Node>} targetNodeList
+     * @returns {NodeList|Node} targetNodeList
      */
     findTargetNodes(nodeList = this.nodeToSearch)
     {
         console.log("widget findTargetNodes", nodeList)
-        for (const node of nodeList)
-        {
+        const _findTargetNodes = (node) => { // sub function for handling cases when a single node is passed in and when a nodeList is passed in
             // check if it's an element and if there are any sub elements that match our target selector
             if (node.nodeType === Node.ELEMENT_NODE && node.querySelectorAll(this.targetNodeSelector).length)
             {
                 this.targetNodeList = node.querySelectorAll(this.targetNodeSelector);
-                break;
+                return true;
             }
+        };
+        if (nodeList instanceof NodeList) // is NodeList
+        {
+            for (const node of nodeList)
+            {
+                if (_findTargetNodes(node))
+                {
+                    break;
+                }
+            }
+        }
+        else // is single node
+        {
+            _findTargetNodes(nodeList);
         }
         return this.targetNodeList;
     }
@@ -326,18 +413,15 @@ export default class WidgetBase
      * Watching the ancestor allows for the callback to be triggered when the target node is removed
      * from the DOM.
      * 
-     * @param {NodeList} nodeList 
+     * @param {NodeList|Node} nodes 
      * @param {Function} observerCallBack 
      * @param {boolean} watchAncestor whether to watch the parent node or the node itself
      * @returns 
      */
-    static createObserver(nodeList, observerCallBack, watchAncestor = false, watchAncestorDepth = 5)
+    static createObserver(nodes, observerCallBack, watchAncestor = false, watchAncestorDepth = 5)
     {
-        // console.log("base createObserver")
         const observer = new MutationObserver(observerCallBack);
-    
-        for (let node of nodeList)
-        {
+        const _watchNode = (node, observer) => { // subfunction to call on each node in nodes
             if (watchAncestor) // if we want to watch the ancestor, crawl on up the tree. the loop count is based on trial and error.
             {
                 for (let i=0; i<watchAncestorDepth; i++)
@@ -347,7 +431,18 @@ export default class WidgetBase
             }
             observer.observe(node, WidgetBase.observerConfig);
         }
-    
+        // console.log("base createObserver")    
+        if (nodes instanceof NodeList) // is NodeList
+        {
+            for (let node of nodes)
+            {
+                _watchNode(node, observer);
+            }
+        }
+        else // is single node
+        {
+            _watchNode(nodes, observer);
+        }
         return observer;
     }
 }
