@@ -14,7 +14,8 @@
   "content_scripts": [
     {
       "matches": ["*://*.fidelity.com/*"],
-      "js": ["dist/content-script-fidelity.com.bundle.js"]
+      "js": ["dist/content-script-fidelity.com.bundle.js"],
+      "css": ["contentScripts/contentScripts.css"]
     }
   ],
   "background": {

@@ -2,6 +2,7 @@ import {
     toDollars,
     dollarsToFloat,
     arrayToList,
+    applyToSingleElemOrList
  } from "./helpers";
 
 export default class WidgetBase 
@@ -10,6 +11,9 @@ export default class WidgetBase
         childList: true,
         subtree: true,
     }
+    static hiddenClass = 'money-mask-hidden';
+    static cloneClass = 'money-mask-clone';
+    static notCloneSelector = ':not(.money-mask-clone)';
 
     maskValue = 100;
     isMaskOn = false;
@@ -46,44 +50,17 @@ export default class WidgetBase
     {
         console.log("widget updateMaskValue", maskValue)
         this.maskValue = maskValue;
-        // determine if we need to update the displayed mask
-        if (this.isMaskOn)
-        {
-            this.updateDisplayedMaskValue();
-        }
-    }
-
-    updateDisplayedMaskValue()
-    {
-        console.log("widget updateDisplayedMaskValue")
-        for (const ele of this.targetNodeList)
-        {
-            ele.textContent = toDollars(this.maskValue);
-        }
+        this.maskUpOrDownSwitch();
     }
 
     /**
-     * This is the main function that should be called when the mask is toggled. Sets this.isMaskOn to the new value, then calls the appropriate function.
-     * @param {bool} incomingIsMaskOn 
+     * This should be called when the mask up/down state is toggled. Sets this.isMaskOn to the new value, then calls the appropriate function.
+     * @param {bool} isMaskOn 
      */
-    updateMaskActivated(incomingIsMaskOn)
+    updateMaskActivated(isMaskOn)
     {
-        console.log("widget updateMaskActivated", incomingIsMaskOn)
-        if (incomingIsMaskOn)
-        {
-            if (!this.isMaskOn) // if the mask was down, save the values before putting it up
-            {
-                this.saveValues(this.targetNodeList);
-            }
-            this.maskUp();
-        }
-        else
-        {
-            this.maskDown();
-        }
-        this.isMaskOn = incomingIsMaskOn;
-        // incomingIsMaskOn ? this.maskUp() : this.maskDown();
-        // this.maskUpOrDownSwitch();
+        this.isMaskOn = isMaskOn;
+        this.maskUpOrDownSwitch();
     }
 
     /**
@@ -93,29 +70,15 @@ export default class WidgetBase
     {
         if (this.isMaskOn)
         {
-            this.updateDisplayedMaskValue();
+            WidgetBase.makeClones(this.targetNodeList);
+            WidgetBase.maskUp(this.getTargetNodes(), toDollars(this.maskValue));
+            this.maskSecondaryEffects();
         }
         else
         {
-            this.saveValues(this.targetNodeList);
+            WidgetBase.unmask(this.getTargetNodes());
+            this.resetSecondaryEffects();
         }
-    }
-    
-    /**
-     * The central logic behind concealing the monetary value. Saves the node's
-     * original value in the node's data attribute, then replaces the textContent
-     */
-    maskUp()
-    {
-        console.log("widget maskUp")
-
-        // this.saveValues(this.targetNodeList);
-        // for (const ele of this.targetNodeList)
-        // {
-        //     ele.textContent = toDollars(this.maskValue);
-        // }
-        this.updateDisplayedMaskValue();
-        this.maskSecondaryEffects();
     }
 
     /**
@@ -135,71 +98,6 @@ export default class WidgetBase
     }
 
     /**
-     * Saves the original values of the node list in the node's data attribute.
-     * 
-     * @param {NodeList} nodeList
-     */
-    saveValues(nodeList)
-    {
-        console.log("widget saveValues", nodeList)
-        if (nodeList.length)
-        {
-            for (const node of nodeList) // Node
-            {
-                this.saveValue(node);
-            }
-        }
-    }
-
-    /**
-     * Save the original value of a single node so long as no original value has been saved OR the incoming value is not equal to the node's current textContent.
-     * @param {Node} node 
-     * @param {int|float} incomingValue: should be a number or a string representing a number 
-     */
-    saveValue(node, incomingValue = this.maskValue)
-    {
-        incomingValue = toDollars(incomingValue);
-        // if (!node.dataset.originalValue // do save if nothing is there
-        //     || node.dataset.originalValue == '' // do save if empty string
-        //     // || node.textContent != toDollars(incomingValue))
-        //     || node.textContent != incomingValue) // but if there is something there, do not save if the incoming value is the same as the current value
-        // if (!node.dataset.originalValue) // save if not saved already // ! this works but I don't like it- we want to be able to see the changing values
-        // if (this.isMaskOn) // this should only trigger when we are in the process of putting the mask on/up
-        // {
-            node.setAttribute('data-original-value', node.textContent);
-        // }
-    }
-
-    /**
-     * Restore the original values of the target nodes.
-     * Used when masking/demasking.
-     */
-    maskDown()
-    {
-        console.log("widget maskDown")
-        // make sure we have values to restore
-        for (const node of this.targetNodeList)
-        {
-            this.resetNodeValue(node);
-        }
-        this.resetSecondaryEffects();
-        this.isMaskOn = false;
-    }
-
-    /**
-     * Restore the original values of the node, but check first if the node has an original value saved.
-     * @param {Node} node 
-     */
-    resetNodeValue(node)
-    {
-        console.log("widget resetNodeValue", node)
-        if (node.dataset.originalValue)
-        {
-            node.textContent = node.dataset.originalValue;
-        }
-    }
-
-    /**
      * The searchingObserver is called whenever the DOM updates
      * (eg returning AJAX requests). It searches for the element containing
      * the unmasked monetary value; once that element is loaded, it should deactivate.
@@ -209,9 +107,8 @@ export default class WidgetBase
      */
     activateSearchingObserver() 
     {
-        this.wideAreaSearchNode = this.wideAreaSearchNode ?? document.querySelectorAll(this.wideAreaSearchSelector); // set wideAreaSearchNode if it is not already set
         console.log("widget activateSearchingObserver")
-        this.searchingObserver = WidgetBase.createObserver(this.wideAreaSearchNode, (mutations) => {
+        this.searchingObserver = WidgetBase.createObserver(this.getWideAreaSearchNode(), (mutations) => {
             console.log("widget activateSearchingObserver callback")
             console.log("search mutations.length: ", mutations.length)
             for (const mutation of mutations) 
@@ -222,13 +119,8 @@ export default class WidgetBase
                 ) 
                 {
                     try 
-                    {    
-                        // this triggers the very first time (and only the first time) that the target nodes are found. Save values regardless of isMaskOn state. Then maskUp if isMaskOn.
-                        this.saveValues(this.targetNodeList);
-                        if (this.isMaskOn)
-                        {
-                            this.maskUp();
-                        }
+                    { 
+                        this.maskUpOrDownSwitch();
                         this.activateTargetedObserver();
                     } 
                     catch (error) 
@@ -245,6 +137,9 @@ export default class WidgetBase
         })
     }
 
+    /**
+     * Watches over only the set of nodes that are relevant to the widget.
+     */
     activateTargetedObserver() 
     {
         this.targetCommonAncestorNode = this.targetCommonAncestorNode ?? document.querySelectorAll(this.targetCommonAncestorSelector); // set targetCommonAncestorNode if it is not already set
@@ -254,15 +149,9 @@ export default class WidgetBase
             console.log("target mutations.length: ", mutations.length)
             for (const mutation of mutations)
             {
-                // if (!this.internalUpdate(mutation) 
-                // && (mutation.type === 'childList' || mutation.type === 'subtree')
                 if ((mutation.type === 'childList' || mutation.type === 'subtree')
                     && this.refreshTargetNodes(this.targetCommonAncestorNode).length) // this.targetNodeList will be set here
                 {
-                    if (this.unsavedNodes(this.targetNodeList)) // see if there are any nodes that have not been saved
-                    {
-                        this.saveValues(this.targetNodeList);
-                    }
                     this.maskUpOrDownSwitch();
                     break; // break out of the loop for efficiency
                 }
@@ -271,50 +160,11 @@ export default class WidgetBase
     }
 
     /**
-     * Check if the node has dataset.originalValue set. Return true if not set.
-     * @param {NodeList|Node} nodes 
-     * @returns {boolean}
-     */
-    unsavedNodes(nodes)
-    {
-        if (nodes instanceof NodeList)
-        {
-            for (const node of nodes)
-            {
-                if (!node.dataset.originalValue)
-                {
-                    return true;
-                }
-            }
-            return false;
-        }
-        else // single node
-        {
-            if (!nodes.dataset.originalValue)
-            {
-                return true;
-            }
-        }
-    }
-
-    // /**
-    //  * Returns true if the mutation was a result of our own maskUp. This is to
-    //  * prevent infinite loops. (Technically returns true if the textContent of the mutated node is the same as this.maskValue.)
-    //  * @param {MutationRecord} mutation 
-    //  * @returns {boolean}
-    //  */
-    // internalUpdate(mutation)
-    // {
-    //     console.log("widget internalUpdate")
-    //     return mutation.target.textContent == toDollars(this.maskValue)
-    // }
-
-    /**
      * Search the nodeList for the target nodes. Short circuits if the targetNodeList already found.
      * Returns the targetNodeList and saves it to this.targetNodeList if it's empty.
      * @param {NodeList|Node} nodeList 
      */
-    getTargetNodes(nodeList = this.wideAreaSearchNode)
+    getTargetNodes(nodeList = this.getWideAreaSearchNode())
     {
         console.log("widget targetNodeList")
         if (this.targetNodeList && this.targetNodeList.length) // short circuit
@@ -326,11 +176,24 @@ export default class WidgetBase
     }
 
     /**
+     * Returns the wide area node to search for target nodes (defaults to 'body').
+     * @returns {Node} wideAreaSearchNode
+     */
+    getWideAreaSearchNode()
+    {
+        if (!this.wideAreaSearchNode)
+        {
+            this.wideAreaSearchNode = document.querySelector(this.wideAreaSearchSelector);
+        }
+        return this.wideAreaSearchNode;
+    }
+
+    /**
      * Searches again for target nodes. If any found, resets current targetNodeList to the new targets nodes
      * @param {NodeList|Node} nodeList 
      * @returns {NodeList} targetNodeList
      */
-    refreshTargetNodes(nodeList = this.wideAreaSearchNode)
+    refreshTargetNodes(nodeList = this.getWideAreaSearchNode())
     {
         console.log("widget refreshTargetNodes", nodeList)
         const targetNodeList = this.findTargetNodes(nodeList);
@@ -353,31 +216,18 @@ export default class WidgetBase
         console.log("widget findTargetNodes", nodeList)
         const _findTargetNodes = (node) => { // sub function for handling cases when a single node is passed in and when a nodeList is passed in
             // check if it's an element and if there are any sub elements that match our target selector
-            if (node.nodeType === Node.ELEMENT_NODE && node.querySelectorAll(this.targetNodeSelector).length)
+            if (node.nodeType === Node.ELEMENT_NODE && node.querySelectorAll(this.targetNodeSelector + WidgetBase.notCloneSelector).length)
             {
                 this.targetNodeList = node.querySelectorAll(this.targetNodeSelector);
                 return true;
             }
         };
-        if (nodeList instanceof NodeList) // is NodeList
-        {
-            for (const node of nodeList)
-            {
-                if (_findTargetNodes(node))
-                {
-                    break;
-                }
-            }
-        }
-        else // is single node
-        {
-            _findTargetNodes(nodeList);
-        }
+        applyToSingleElemOrList(nodeList, _findTargetNodes);
         return this.targetNodeList;
     }
 
     /**
-     * Trigger any after/secondary effects here. This should be overwritten in child classes.
+     * Trigger any after/secondary mask up effects here. This should be overwritten in child classes.
      * Effects should be determined by values in targetNodeList.
      * @returns {void}
      */
@@ -406,6 +256,44 @@ export default class WidgetBase
         const proportion = dollarsToFloat(proportionDollars) / dollarsToFloat(totalDollars);
         return this.maskValue * proportion;
     }
+    
+    /**
+     * The central logic behind concealing the monetary value. Reveals the clones, which will show the mask value, and hides the originals.
+     * @param {Node|NodeList} nodes
+     * @param {string} maskCurrencyString
+     */
+    static maskUp(nodes, maskCurrencyString)
+    {
+        const _maskUp = (node) => { // subfunction
+            if (node.dataset.hasClone == 'true')
+            {
+                node.classList.add(WidgetBase.hiddenClass); // hide the original node
+                const clone = node.nextSibling;
+                clone.classList.remove(WidgetBase.hiddenClass); // reveal clone
+                clone.textContent = maskCurrencyString;
+                clone.textContent = maskCurrencyString;
+            }
+        }
+        applyToSingleElemOrList(nodes, _maskUp);
+    }
+
+    /**
+     * Reveal the original nodes (which have the original values) and hide the clones (which have the masked value).
+     * @param {NodeList|Node} nodes
+     */
+    static unmask(nodes)
+    {
+        const _unmask = (node) => {
+            node.classList.remove('money-mask-hidden'); // reveal the original node
+            if (node.dataset.hasClone == "true") // ensure it does have a clone
+            {
+                node.nextSibling.classList.add('money-mask-hidden'); // hide the clone
+            }
+        }
+        console.log("widget maskDown")
+        // make sure we have values to restore
+        applyToSingleElemOrList(nodes, _unmask);
+    }
 
     /**
      * Create an observer over each node in the node list.
@@ -432,17 +320,36 @@ export default class WidgetBase
             observer.observe(node, WidgetBase.observerConfig);
         }
         // console.log("base createObserver")    
-        if (nodes instanceof NodeList) // is NodeList
-        {
-            for (let node of nodes)
-            {
-                _watchNode(node, observer);
-            }
-        }
-        else // is single node
-        {
-            _watchNode(nodes, observer);
-        }
+        applyToSingleElemOrList(nodes, _watchNode, observer);
         return observer;
+    }
+
+    /**
+     * Makes clones of the nodes or node
+     * @param {NodeList|Node} nodes 
+     */
+    static makeClones(nodes)
+    {
+        const _makeClone = (node) => {
+            if (node.dataset.hasClone == "true")
+            {
+                return; // do not make a clone if it already has one
+            }
+            const clone = node.cloneNode(true);
+            clone.classList.add(WidgetBase.cloneClass); // add class to the clone so we can target later
+            // append the node after the original node
+            if (node.nextSibling)
+            {
+                node.parentNode.insertBefore(clone, node.nextSibling);
+            }
+            else
+            {
+                node.parentNode.appendChild(clone);
+            }
+            // update original node to show it has a clone
+            node.setAttribute('data-has-clone', "true");
+
+        };
+        applyToSingleElemOrList(nodes, _makeClone);
     }
 }

@@ -1,11 +1,13 @@
-import { toDollars } from "../helpers";
+import { 
+    toDollars, 
+    toGainDollars
+} from "../helpers";
 import WidgetBase from "../WidgetBase";
 
 export default class SummarySidebarWidget extends WidgetBase 
 {
     targetNodeSelector = '[class$="_acct-balance"] > span:nth-child(2)';
     targetCommonAncestorSelector = '.acct-selector__container';
-    // accountsTotalSelector = '[class$="acct-selector__balance-wrapper"] > span:nth-child(2)';
     accountsTotalSelector = '.acct-selector__all-accounts > div:nth-child(2) > span:nth-child(2)';
     accountsTotal = null; // node that has the total of totals. I memoize it since it is a single node and easy to track.
     groupTotalNodesSelector = '.acct-selector__group-balance'; // each "group" of accounts (ie retirement, custodial, etc) has a total
@@ -36,6 +38,8 @@ export default class SummarySidebarWidget extends WidgetBase
     {
         console.log("summaryWidget maskGroupTotalValues");
         const groupTotalNodes = this.getGroupTotalNodes();
+        // make clones
+        WidgetBase.makeClones(groupTotalNodes);
         // subfunction to get common ancestor of targetNode and groupTotalNode
         const getCommonGroupAncestor = (node) =>
         {
@@ -54,14 +58,15 @@ export default class SummarySidebarWidget extends WidgetBase
         // loop through each group total node
         for (const groupTotalNode of groupTotalNodes)
         {
-            let groupTotal = null;
+            // let groupTotal = null;
             const commonGroupAncestor = getCommonGroupAncestor(groupTotalNode);
             if (commonGroupAncestor)
             {
-                groupTotal = commonGroupAncestor.querySelectorAll(this.targetNodeSelector).length * this.maskValue;
+                const groupTotal = commonGroupAncestor.querySelectorAll(this.targetNodeSelector).length * this.maskValue;
+                WidgetBase.maskUp(groupTotalNode, toDollars(groupTotal));
             }
-            this.saveValue(groupTotalNode, groupTotal);
-            groupTotalNode.textContent = toDollars(groupTotal);
+            // this.saveValue(groupTotalNode, groupTotal);
+            // groupTotalNode.textContent = toDollars(groupTotal);
         }
     }
 
@@ -75,10 +80,11 @@ export default class SummarySidebarWidget extends WidgetBase
         const gainNode = this.getGainNode(targetNode);
         // ensure that there is a gain node for this account
         if (!gainNode) return;
-        const originalNodeDollars = targetNode.dataset.originalValue;
-        const proportion = this.makeProportions(originalNodeDollars, gainNode.textContent);
-        this.saveValue(gainNode, proportion);
-        gainNode.textContent = toDollars(proportion);
+        const proportion = this.makeProportions(targetNode.textContent, gainNode.textContent);
+        // this.saveValue(gainNode, proportion);
+        WidgetBase.makeClones(gainNode);
+        WidgetBase.maskUp(gainNode, toGainDollars(proportion));
+        // gainNode.textContent = toGainDollars(proportion);
     }
 
     /**
@@ -93,9 +99,11 @@ export default class SummarySidebarWidget extends WidgetBase
 
         // if (!this.secondaryEffectValuesSaved && this.getAccountsTotal().textContent !== total)
         // {
-            this.saveValue(this.getAccountsTotal(), total);
+            // this.saveValue(this.getAccountsTotal(), total);
         // }
-        this.getAccountsTotal().textContent = toDollars(total); 
+        WidgetBase.makeClones(this.getAccountsTotal());
+        WidgetBase.maskUp(this.getAccountsTotal(), toDollars(total));
+        // this.getAccountsTotal().textContent = toDollars(total); 
     }
 
     /**
@@ -130,7 +138,7 @@ export default class SummarySidebarWidget extends WidgetBase
         console.log("summaryWidget getAccountsTotal")
         if (!this.accountsTotal)
         {
-            this.accountsTotal = document.querySelector(this.accountsTotalSelector);
+            this.accountsTotal = document.querySelector(this.accountsTotalSelector + WidgetBase.notCloneSelector);
         }
         return this.accountsTotal;
     }
@@ -141,7 +149,7 @@ export default class SummarySidebarWidget extends WidgetBase
      */
     getGroupTotalNodes()
     {
-        return document.querySelectorAll(this.groupTotalNodesSelector);;
+        return document.querySelectorAll(this.groupTotalNodesSelector + WidgetBase.notCloneSelector);;
     }
 
     resetSecondaryEffects()
@@ -160,13 +168,13 @@ export default class SummarySidebarWidget extends WidgetBase
         console.log("summaryWidget resetGainNodeValue", node)
         const gainNode = this.getGainNode(node);
         if (!gainNode) return;
-        this.resetNodeValue(gainNode);
+        WidgetBase.unmask(gainNode);
     }
 
     resetAccountsTotalValue()
     {
         console.log("summaryWidget resetAccountsTotalValue");
-        this.resetNodeValue(this.getAccountsTotal());
+        WidgetBase.unmask(this.getAccountsTotal());
     }
 
     resetGroupTotalValues()
@@ -175,7 +183,7 @@ export default class SummarySidebarWidget extends WidgetBase
         const groupTotalNodes = this.getGroupTotalNodes();
         for (const groupTotalNode of groupTotalNodes)
         {
-            this.resetNodeValue(groupTotalNode);
+            WidgetBase.unmask(groupTotalNode);
         }
     }
 }

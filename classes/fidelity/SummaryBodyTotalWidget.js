@@ -137,12 +137,7 @@ export default class SummaryBodyTotalWidget extends OnlySecondaryWidgetBase
 
     getPercentNode()
     {
-        return document.querySelector(this.percentNodeSelector);
-        // if (!this.percentNode || !this.percentNode.length)
-        // {
-            // this.percentNode = document.querySelector(this.percentNodeSelector);
-        // }
-        // return this.percentNode;
+        return document.querySelector(this.percentNodeSelector + WidgetBase.notCloneSelector);
     }
 
     /**
@@ -151,7 +146,7 @@ export default class SummaryBodyTotalWidget extends OnlySecondaryWidgetBase
      */
     getCatalystText()
     {
-        const catalystNode = document.querySelector(this.catalystSelector); // requery this node each time since it can be nonexistent, removed, or reloaded
+        const catalystNode = document.querySelector(this.catalystSelector + WidgetBase.notCloneSelector); // requery this node each time since it can be nonexistent, removed, or reloaded
         if (catalystNode)
         {
             return catalystNode.textContent;

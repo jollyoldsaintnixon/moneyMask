@@ -20,7 +20,7 @@ export function arrayToList(nodeArray)
 
 /**
  * 
- * @param {int} value 
+ * @param {int|float} value 
  * @returns {string} value as dollars
  */
 export function toDollars(value)
@@ -33,6 +33,21 @@ export function toDollars(value)
         maximumFractionDigits: 2,
     });
     return formatter.format(value);
+}
+
+/**
+ * Convert a value to a gain/loss value by prepending a "+" if positive.
+ * @param {int|float} value 
+ * @returns 
+ */
+export function toGainDollars(value)
+{
+    const gainDollars = toDollars(value);
+    if (value > 0)
+    {
+        return `+${gainDollars}`;
+    }
+    return gainDollars
 }
 
 /**
@@ -65,4 +80,25 @@ export function bindHandlers(that)
 export function stripToNumber(value)
 {
     return parseFloat(value.replace(/[^0-9.-]+/g,""));
+}
+
+/**
+ * Call the func on a single element or each element in the iterable.
+ * @param {Element|Iterable} elemOrList 
+ * @param {*} func 
+ * @param  {...any} args to pass in after element to func
+ */
+export function applyToSingleElemOrList(elemOrList, func, ...args)
+{
+    if (elemOrList.length)
+    {
+        for (const elem of elemOrList)
+        {
+            func(elem, ...args);
+        }
+    }
+    else
+    {
+        func(elemOrList, ...args);
+    }
 }
