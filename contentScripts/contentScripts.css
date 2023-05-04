@@ -1,3 +1,11 @@
 .money-mask-hidden {
     display: none;
 }
+
+.money-mask-clone {
+    color: purple;
+}
+
+.money-mask-blurred {
+    filter: blur(10px);
+}
