@@ -39,7 +39,7 @@ export default class SummarySidebarWidget extends WidgetBase
         console.log("summaryWidget maskGroupTotalValues");
         const groupTotalNodes = this.getGroupTotalNodes();
         // make clones
-        WidgetBase.makeClones(groupTotalNodes);
+        // WidgetBase.makeClones(groupTotalNodes);
         // subfunction to get common ancestor of targetNode and groupTotalNode
         const getCommonGroupAncestor = (node) =>
         {
@@ -82,7 +82,7 @@ export default class SummarySidebarWidget extends WidgetBase
         if (!gainNode) return;
         const proportion = this.makeProportions(targetNode.textContent, gainNode.textContent);
         // this.saveValue(gainNode, proportion);
-        WidgetBase.makeClones(gainNode);
+        // WidgetBase.makeClones(gainNode);
         WidgetBase.maskUp(gainNode, toGainDollars(proportion));
         // gainNode.textContent = toGainDollars(proportion);
     }
@@ -101,7 +101,7 @@ export default class SummarySidebarWidget extends WidgetBase
         // {
             // this.saveValue(this.getAccountsTotal(), total);
         // }
-        WidgetBase.makeClones(this.getAccountsTotal());
+        // WidgetBase.makeClones(this.getAccountsTotal());
         WidgetBase.maskUp(this.getAccountsTotal(), toDollars(total));
         // this.getAccountsTotal().textContent = toDollars(total); 
     }
