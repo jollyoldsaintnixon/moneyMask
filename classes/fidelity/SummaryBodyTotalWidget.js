@@ -1,5 +1,4 @@
 import { 
-    toDollars, 
     stripToNumber, 
     toGraphDollars,
     toGainDollars,
@@ -35,6 +34,7 @@ export default class SummaryBodyTotalWidget extends OnlySecondaryWidgetBase
     {
         super(maskValue, isMaskOn);
         this.maskPortfolioTotalGainNode = this.maskPortfolioTotalGainNode.bind(this);
+        this.maskUpOrDownSwitch();
     }
 
     /**
@@ -47,8 +47,7 @@ export default class SummaryBodyTotalWidget extends OnlySecondaryWidgetBase
         console.log('summaryBodyTotalWidget maskSecondaryEffects')
         if (!this.listenersInitiated) // only listen once
         {
-            this.initiateListeners();
-            this.listenersInitiated = true;
+            this.listenersInitiated = this.initiateListeners();
         }
         this.maskPortfolioTotalNode();
         this.maskPortfolioTotalGainNode();
@@ -104,46 +103,57 @@ export default class SummaryBodyTotalWidget extends OnlySecondaryWidgetBase
 
     /**
      * Certain actions can reset/reload the gain nodes. These listen for those events
+     * @returns boolean - true if successfully initiated
      */
     initiateListeners()
     {
+        if (!this.getCommonAncestorNode()) // if the common ancestor isn't loaded, we can't initiate listeners. This will reattempt later.
+        {
+            return false;
+        }
         this.initCommonAncestorListener();
         this.watchForHighCharts(); // the graphs are loaded after the page loads, so we need to watch for them
+        return true;
     }
 
     initCommonAncestorListener()
     {
-        this.getCommonAncestorNode().addEventListener('click', this.maskPortfolioTotalGainNode);
+        const commonAncestor = this.getCommonAncestorNode();
+        if (commonAncestor)
+        {
+            commonAncestor.addEventListener('click', this.maskPortfolioTotalGainNode);
+        }
     }
 
     watchForHighCharts()
     {
-        this.graphObserver = WidgetBase.createObserver(this.getCommonAncestorNode(), function(mutations) {
+        this.graphObserver = WidgetBase.createObserver(this.getCommonAncestorNode(), (mutations) => {
             console.log('summaryBodyTotalWidget watchForHighCharts callback');
             for (const mutation of mutations)
             {
-                if ((mutation.type === 'childList' || mutation.type === 'subtree')
-                    && this.graphWasFound(mutation.addedNodes)
-                    )
+                // if ((mutation.type === 'childList' || mutation.type === 'subtree')
+                //     && this.graphWasFound(mutation.addedNodes)
+                //     )
+                if (this.getGraphNode())
                 {
                     if (this.isMaskOn)
                     {
                         this.maskGraphLabels();
                     }
-                    this.initHighChartsListener(this.graphNode); // this.graphNode is set by this.graphWasFound() if any nodes were found
+                    this.initHighChartsListener(); // this.graphNode is set by this.graphWasFound() if any nodes were found
                     break;
                 }
             }
-        }.bind(this));
+        });
     }
 
     /**
      * 
      * @param {Node} graphNode 
      */
-    initHighChartsListener(graphNode)
+    initHighChartsListener()
     {
-        graphNode.addEventListener('mouseleave', this.maskPortfolioTotalGainNode); // triggers when leaving 
+        this.getGraphNode().addEventListener('mouseleave', this.maskPortfolioTotalGainNode); // triggers when leaving 
     }
 
     /**
@@ -196,19 +206,25 @@ export default class SummaryBodyTotalWidget extends OnlySecondaryWidgetBase
         return ""; // default return empty string
     }
 
+    /**
+     * Gets the float representation of the portfolio total node or its clone, depending on mask up/down state. Defaults to 0.
+     */
     getStrippedPortfolioTotal()
     {
+        let total = "0";
         const portfolioNode = this.getPortfolioTotalNode();
-        let total = "";
-        if (!this.isMaskOn) // mask is down, return original node text
+        if (portfolioNode)
         {
-            total = portfolioNode.textContent;
-        }
-        else
-        {
-            if (portfolioNode.dataset.hasClone == "true") // mask is up and has clone
+            if (!this.isMaskOn) // mask is down, return original node text
             {
-                total = portfolioNode.nextSibling.textContent;
+                total = portfolioNode.textContent;
+            }
+            else
+            {
+                if (portfolioNode.dataset.hasClone == "true") // mask is up and has clone
+                {
+                    total = portfolioNode.nextSibling.textContent;
+                }
             }
         }
         return stripToNumber(total);
@@ -253,29 +269,8 @@ export default class SummaryBodyTotalWidget extends OnlySecondaryWidgetBase
 
     getGraphNode()
     {
+        this.graphNode = this.graphNode ?? document.querySelector(this.graphSelector);
         return this.graphNode;
-    }
-
-    /**
-     * Looks for graphs and sets the graphNode property if some are found.
-     * @return {boolean} true if graphs were found, false otherwise
-     */
-    graphWasFound(nodes)
-    {
-        if (!nodes || !nodes.length) return false;
-        for (const node of nodes)
-        {
-            if (node.parentElement) // look one node of so we can do a query on all descendants
-            {
-                const graphNode = node.parentElement.querySelector("#balance-charts"); // there may be more than one, hard to know
-                if (graphNode)
-                {
-                    this.graphNode = graphNode;
-                    return true;
-                }
-            }
-        }
-        return false;
     }
 
     resetSecondaryEffects()
@@ -298,7 +293,7 @@ export default class SummaryBodyTotalWidget extends OnlySecondaryWidgetBase
 
     resetGraphLabels()
     {
-        if (this.graphLabelNodes.length)
+        if (this.graphLabelNodes && this.graphLabelNodes.length)
         {
             for (const node of this.graphLabelNodes)
             {

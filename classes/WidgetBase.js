@@ -70,7 +70,6 @@ export default class WidgetBase
     {
         if (this.isMaskOn)
         {
-            // WidgetBase.makeClones(this.targetNodeList);
             WidgetBase.maskUp(this.getTargetNodes(), toDollars(this.maskValue));
             this.maskSecondaryEffects();
         }
@@ -265,7 +264,7 @@ export default class WidgetBase
     static maskUp(nodes, maskCurrencyString)
     {
         const _maskUp = (node) => { // subfunction
-                if (!node.dataset.hasClone) // if it doesn't have a clone, create one
+                if (!node.dataset || !node.dataset.hasClone) // if it doesn't have a clone, create one
                 {
                     WidgetBase.makeClones(node);
                 }
@@ -331,7 +330,7 @@ export default class WidgetBase
     static makeClones(nodes)
     {
         const _makeClone = (node) => {
-            if (node.dataset.hasClone == "true")
+            if (!node.dataset || node.dataset.hasClone == "true")
             {
                 return; // do not make a clone if it already has one
             }

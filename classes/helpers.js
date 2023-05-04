@@ -108,7 +108,7 @@ export function bindHandlers(that)
 /**
  * Strip a string to a number
  * @param {float|int} value 
- * @returns 
+ * @returns {float} float
  */
 export function stripToNumber(value)
 {
@@ -123,7 +123,12 @@ export function stripToNumber(value)
  */
 export function applyToSingleElemOrList(elemOrList, func, ...args)
 {
-    if (elemOrList.length)
+    if (!elemOrList)
+    {
+        return; // cut it short here
+    }
+    // else if (elemOrList.length >= 0)
+    else if (typeof elemOrList[Symbol.iterator] === 'function')
     {
         for (const elem of elemOrList)
         {
