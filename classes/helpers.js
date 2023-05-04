@@ -51,6 +51,34 @@ export function toGainDollars(value)
 }
 
 /**
+ * Convert to dollars that show up on the Fidelity graphs.
+ * @param {int|float} value
+* @returns {string} value as dollars
+ */
+export function toGraphDollars(value)
+{
+    if (value > 1000) // more than 1,000
+    {
+        if (value < 1000000) // less than 1,000,000
+        {
+            return `${toDollars(value/1000).slice(0,-1)}K`;
+        }
+        else if (value < 1000000000) // ,pre than 1,000,000 but less than 1,000,000,000
+        {
+            return `${toDollars(value/1000000).slice(0,-1)}M`;
+        }
+        else // more than 1,000,000,000
+        {
+            return `${toDollars(value/1000000000).slice(0,-1)}B`;
+        }
+    }
+    else // less than 1,000
+    {
+        return `${toDollars(value)}`;
+    }
+}
+
+/**
  * 
  * @param {string} dollars 
  * @returns 
@@ -77,6 +105,11 @@ export function bindHandlers(that)
     }
 }
 
+/**
+ * Strip a string to a number
+ * @param {float|int} value 
+ * @returns 
+ */
 export function stripToNumber(value)
 {
     return parseFloat(value.replace(/[^0-9.-]+/g,""));
