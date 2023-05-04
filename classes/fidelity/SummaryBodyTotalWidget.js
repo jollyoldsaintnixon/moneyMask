@@ -1,6 +1,8 @@
 import { 
     toDollars, 
     stripToNumber, 
+    toGraphDollars,
+    toGainDollars,
     arrayToList
 } from "../helpers";
 import OnlySecondaryWidgetBase from "../OnlySecondaryWidgetBase";
@@ -23,8 +25,17 @@ export default class SummaryBodyTotalWidget extends OnlySecondaryWidgetBase
     percentNodeSelector = '.today-change-value > span:nth-child(2)';
     percentNode = null; // this represents the percent change for the day
    
+    graphSelector = "#balance-charts";
+    graphYAxisSelector = ".highcharts-yaxis-labels";
     graphNode = null;
+    graphLabelNodes = arrayToList([]); 
     graphObserver = null; // this will be the observer that watches for changes to a graph that reloads/replaces gain nodes
+
+    constructor(maskValue = 100, isMaskOn = false) 
+    {
+        super(maskValue, isMaskOn);
+        this.maskPortfolioTotalGainNode = this.maskPortfolioTotalGainNode.bind(this);
+    }
 
     /**
      * Updates the "gain" node for each account (the gain/loss for the day).
@@ -40,7 +51,8 @@ export default class SummaryBodyTotalWidget extends OnlySecondaryWidgetBase
             this.listenersInitiated = true;
         }
         this.maskPortfolioTotalNode();
-        this.maskPorfolioTotalGainNode();
+        this.maskPortfolioTotalGainNode();
+        this.maskGraphLabels();
     }
 
     /**
@@ -51,18 +63,43 @@ export default class SummaryBodyTotalWidget extends OnlySecondaryWidgetBase
         const catalystText = this.getCatalystText();
         if (catalystText.length) // we found the catalyst node and it had text
         {
-            this.getPortfolioTotalNode().textContent = catalystText;
+            WidgetBase.maskUp(this.getPortfolioTotalNode(), catalystText);
         }
     }
 
     /**
      * The gain node should be related to the first target node found based on the common ancestor node.
      */
-    maskPorfolioTotalGainNode()
+    maskPortfolioTotalGainNode()
     {
-        const strippedTotal = stripToNumber(this.getPortfolioTotalNode().textContent);
-        const strippedPercentChange = stripToNumber((this.getPercentNode().textContent ?? "0"));
-        this.getGainNode(this.getPortfolioTotalNode()).textContent = toDollars(strippedTotal * (strippedPercentChange / 100));
+        const strippedTotal = this.getStrippedPortfolioTotal();
+        const strippedPercentChange = this.getStrippedPercentChange();
+        const gainDollars = toGainDollars(strippedTotal * (strippedPercentChange / 100));
+        const gainNode = this.getGainNode(this.getPortfolioTotalNode());
+        if (gainNode)
+        {
+            WidgetBase.maskUp(gainNode, gainDollars)
+        }
+    }
+
+    maskGraphLabels()
+    {
+        const graphNode = this.getGraphNode();
+        if (graphNode)
+        {
+            const yAxisNode = graphNode.querySelector(this.graphYAxisSelector);
+            if (yAxisNode)
+            {
+                this.graphLabelNodes = yAxisNode.querySelectorAll('text' + WidgetBase.notCloneSelector);
+                if (this.graphLabelNodes.length === 3) // there should only be three nodes
+                {
+                    const total = stripToNumber(this.getCatalystText());
+                    WidgetBase.maskUp(this.graphLabelNodes[0], toGraphDollars(0));
+                    WidgetBase.maskUp(this.graphLabelNodes[1], toGraphDollars(total/2));
+                    WidgetBase.maskUp(this.graphLabelNodes[2], toGraphDollars(total));
+                }
+            }
+        }
     }
 
     /**
@@ -76,7 +113,7 @@ export default class SummaryBodyTotalWidget extends OnlySecondaryWidgetBase
 
     initCommonAncestorListener()
     {
-        this.getCommonAncestorNode().addEventListener('click', this._listenerCallBack.bind(this));
+        this.getCommonAncestorNode().addEventListener('click', this.maskPortfolioTotalGainNode);
     }
 
     watchForHighCharts()
@@ -89,6 +126,10 @@ export default class SummaryBodyTotalWidget extends OnlySecondaryWidgetBase
                     && this.graphWasFound(mutation.addedNodes)
                     )
                 {
+                    if (this.isMaskOn)
+                    {
+                        this.maskGraphLabels();
+                    }
                     this.initHighChartsListener(this.graphNode); // this.graphNode is set by this.graphWasFound() if any nodes were found
                     break;
                 }
@@ -102,18 +143,7 @@ export default class SummaryBodyTotalWidget extends OnlySecondaryWidgetBase
      */
     initHighChartsListener(graphNode)
     {
-        // graphNode.forEach(graph => {
-            // graphNode.addEventListener('click', this._listenerCallBack.bind(this));
-            // graphNode.addEventListener('mouseover', this._listenerCallBack.bind(this));
-            graphNode.addEventListener('mouseleave', this._listenerCallBack.bind(this)); // triggers when leaving element (but not children)
-            // graphNode.addEventListener('mouseout', this._listenerCallBack.bind(this)); // triggers when leaving element or any child
-        // });
-    }
-
-    _listenerCallBack()
-    {
-        console.log('summaryBodyTotal event listenerCallBack');
-        this.maskPorfolioTotalGainNode();
+        graphNode.addEventListener('mouseleave', this.maskPortfolioTotalGainNode); // triggers when leaving 
     }
 
     /**
@@ -137,21 +167,64 @@ export default class SummaryBodyTotalWidget extends OnlySecondaryWidgetBase
 
     getPercentNode()
     {
-        return document.querySelector(this.percentNodeSelector + WidgetBase.notCloneSelector);
+        let node = document.querySelector(this.percentNodeSelector);
+        if (node && node.classList.contains(WidgetBase.cloneClass)) // if the node is a clone, we need to get the original
+        {
+            node = node.nextElementSibling;
+        }
+        return node;
     }
 
     /**
-     * 
-     * @returns {string} the text of the catalyst node or an empty string
+     * Gets the text of the catalyst node or its clone, depending on mask up/down state. Defaults to empty string
+     * @returns {string} the text of the catalyst node or its clone
      */
     getCatalystText()
     {
         const catalystNode = document.querySelector(this.catalystSelector + WidgetBase.notCloneSelector); // requery this node each time since it can be nonexistent, removed, or reloaded
         if (catalystNode)
         {
-            return catalystNode.textContent;
+            if (!this.isMaskOn) // mask is down, return original node text
+            {
+                return catalystNode.textContent;
+            }
+            else if (catalystNode.dataset.hasClone == "true") // mask is up, check for clone
+            {
+                return catalystNode.nextSibling.textContent;
+            }
         }
-        return "";
+        return ""; // default return empty string
+    }
+
+    getStrippedPortfolioTotal()
+    {
+        const portfolioNode = this.getPortfolioTotalNode();
+        let total = "";
+        if (!this.isMaskOn) // mask is down, return original node text
+        {
+            total = portfolioNode.textContent;
+        }
+        else
+        {
+            if (portfolioNode.dataset.hasClone == "true") // mask is up and has clone
+            {
+                total = portfolioNode.nextSibling.textContent;
+            }
+        }
+        return stripToNumber(total);
+    }
+
+    getStrippedPercentChange()
+    {
+        const percentNode = this.getPercentNode();
+        if (percentNode)
+        {
+            return stripToNumber(percentNode.textContent);
+        }
+        else
+        {
+            return 0;
+        }
     }
 
     /**
@@ -166,15 +239,21 @@ export default class SummaryBodyTotalWidget extends OnlySecondaryWidgetBase
     {
         console.log('summaryBodyTotalWidget getGainNode', starterNode);
         // if (this.gainNode) return this.gainNode; // short circuit if already found
+        let gainNode = null;
         try
         {
-            this.gainNode = starterNode.parentElement.nextElementSibling.childNodes[1];
+            gainNode = starterNode.parentElement.nextElementSibling.childNodes[1];
         }
         catch (error)
         {
-            // console.warn('did not find gain node');
+            gainNode = null;
         }
-        return this.gainNode;
+        return gainNode;
+    }
+
+    getGraphNode()
+    {
+        return this.graphNode;
     }
 
     /**
@@ -197,5 +276,34 @@ export default class SummaryBodyTotalWidget extends OnlySecondaryWidgetBase
             }
         }
         return false;
+    }
+
+    resetSecondaryEffects()
+    {
+        console.log('summaryBodyTotalWidget resetSecondaryEffects');
+        this.resetPortfolioTotalNode();
+        this.resetPortfolioTotalGainNode();
+        this.resetGraphLabels();
+    }
+
+    resetPortfolioTotalNode()
+    {
+        WidgetBase.unmask(this.getPortfolioTotalNode());
+    }
+
+    resetPortfolioTotalGainNode()
+    {
+        WidgetBase.unmask(this.getGainNode(this.getPortfolioTotalNode()));
+    }
+
+    resetGraphLabels()
+    {
+        if (this.graphLabelNodes.length)
+        {
+            for (const node of this.graphLabelNodes)
+            {
+                WidgetBase.unmask(node);
+            }
+        }
     }
 }

@@ -2,3 +2,4 @@ node_modules
 dist
 WidgetSearcher.js
 notes.md
+.vscode
