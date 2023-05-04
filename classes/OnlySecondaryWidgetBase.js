@@ -15,33 +15,19 @@ export default class OnlySecondaryWidgetBase extends WidgetBase
     catalystNode = null; // this is the node that is outside the scope of the widget but that drives the widget's secondary effects
     catalystObserver = null;
 
-    maskUp()
+    /**
+     * Determines the action to take based on the current mask state.
+     */
+    maskUpOrDownSwitch()
     {
-        console.log("OnlySecondaryWidgetBase maskUp");
-    }
-
-    maskDown()
-    {
-        console.log("OnlySecondaryWidgetBase maskDown");
-    }
-
-    activateTargetedObserver()
-    {
-        console.log("OnlySecondaryWidgetBase activateCatalystObserver");
-        this.catalystNode = this.catalystNode ?? document.querySelectorAll(this.catalystSelector);
-        this.maskSecondaryEffects();
-        this.catalystObserver = WidgetBase.createObserver(this.catalystNode, this._targetedObserverCallback.bind(this))
-    }
-
-    _targetedObserverCallback(mutations)
-    {
-        console.log("OnlySecondaryWidgetBase targetedObserverCallback");
-        for (const mutation of mutations)
+        if (this.isMaskOn)
         {
-            if (mutation.type === 'characterData' || mutation.type === 'childList')
-            {
-                this.maskSecondaryEffects();
-            }
+            // WidgetBase.makeClones(this.targetNodeList);
+            this.maskSecondaryEffects();
+        }
+        else
+        {
+            this.resetSecondaryEffects();
         }
     }
 }
