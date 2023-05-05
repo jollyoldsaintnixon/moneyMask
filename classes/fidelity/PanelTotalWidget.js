@@ -12,10 +12,10 @@ import WidgetBase from "../WidgetBase";
  * the total value of all accounts. It is a secondary widget because changes
  * are determined by changes in a node outside of its scope.
  */
-export default class SummaryBodyTotalWidget extends OnlySecondaryWidgetBase 
+export default class PanelTotalWidget extends OnlySecondaryWidgetBase 
 {
     targetNodeSelector = '.total-balance__value';
-    targetCommonAncestorSelector = 'summary-panel'; // it is an element
+    targetCommonAncestorSelector = '.balance-overtime-card-container.helios-override'; // it is an element
     listenersInitiated = false; // this will listen for clicks on the common ancestor. The portfolio and gain nodes can be replaced when the user clicks on the common ancestor.
     catalystSelector = '.acct-selector__all-accounts > div:nth-child(2) > span:nth-child(2)';
     portfolioNode = null; // the node that shows the total portfolio value
@@ -34,7 +34,7 @@ export default class SummaryBodyTotalWidget extends OnlySecondaryWidgetBase
     {
         super(maskValue, isMaskOn);
         this.maskPortfolioTotalGainNode = this.maskPortfolioTotalGainNode.bind(this);
-        this.maskUpOrDownSwitch();
+        this.maskUpOrDownSwitch(); // I couldn't figure out how to call this in OnlySecondaryWidgetBase constructor. The value of catalystSelector was that of OnlySecondaryWidgetBase, not PanelTotalWidget. Weird.
     }
 
     /**
@@ -131,9 +131,6 @@ export default class SummaryBodyTotalWidget extends OnlySecondaryWidgetBase
             console.log('summaryBodyTotalWidget watchForHighCharts callback');
             for (const mutation of mutations)
             {
-                // if ((mutation.type === 'childList' || mutation.type === 'subtree')
-                //     && this.graphWasFound(mutation.addedNodes)
-                //     )
                 if (this.getGraphNode())
                 {
                     if (this.isMaskOn)
@@ -141,6 +138,7 @@ export default class SummaryBodyTotalWidget extends OnlySecondaryWidgetBase
                         this.maskGraphLabels();
                     }
                     this.initHighChartsListener(); // this.graphNode is set by this.graphWasFound() if any nodes were found
+                    this.graphObserver.disconnect();
                     break;
                 }
             }
