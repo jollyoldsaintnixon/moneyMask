@@ -11,7 +11,6 @@ export default class WidgetBase
         childList: true,
         subtree: true,
     }
-    static hiddenClass = 'money-mask-hidden';
     static cloneClass = 'money-mask-clone';
     static notCloneSelector = ':not(.money-mask-clone)';
 
@@ -20,11 +19,11 @@ export default class WidgetBase
 
     targetNodeList = arrayToList([]); // initialize as empty list 
 
-    targetNodeSelector = 'body'; // * This should locate any target node. Overwrite in child.
-    targetCommonAncestorSelector = 'body'; // * This should select the overarching container of the widget. Overwrite in child.
+    targetNodeSelector = 'body'; // This should locate any target node. // !Overwrite in child.
+    targetCommonAncestorSelector = 'body'; // This should select the overarching container of the widget. // ! Overwrite in child.
     wideAreaSearchSelector = 'body'; // probably does not need to be overwritten
 
-    targetCommonAncestorNode = null; // * This is the overarching container of the widget.
+    targetCommonAncestorNode = null; // This is the overarching container of the widget.
     wideAreaSearchNode = null; // this should very likely be the entire body
 
 
@@ -36,7 +35,8 @@ export default class WidgetBase
         console.log("widget constuctor")
         this.maskValue = maskValue;
         this.isMaskOn = isMaskOn;
-        this.activateSearchingObserver();
+        this.activateWideSearchObserver();
+        this.maskUpOrDownSwitch();
     }
 
     /**
@@ -104,11 +104,11 @@ export default class WidgetBase
      * specific elements we care about.
      * ?  could we simply change the wideAreaSearchSelector to the targetNodeList?
      */
-    activateSearchingObserver() 
+    activateWideSearchObserver() 
     {
-        console.log("widget activateSearchingObserver")
+        console.log("widget activateWideSearchObserver")
         this.searchingObserver = WidgetBase.createObserver(this.getWideAreaSearchNode(), (mutations) => {
-            console.log("widget activateSearchingObserver callback")
+            console.log("widget activateWideSearchObserver callback")
             console.log("search mutations.length: ", mutations.length)
             for (const mutation of mutations) 
             {
@@ -226,7 +226,7 @@ export default class WidgetBase
     }
 
     /**
-     * Trigger any after/secondary mask up effects here. This should be overwritten in child classes.
+     * Trigger any after/secondary mask up effects here. // ! This should be overwritten in child classes.
      * Effects should be determined by values in targetNodeList.
      * @returns {void}
      */
@@ -236,7 +236,7 @@ export default class WidgetBase
     }
 
     /**
-     * Reset any after/secondary effects here. This should be overwritten in child classes.
+     * Reset any after/secondary effects here. // ! This should be overwritten in child classes.
      * @returns {void}
      */
     resetSecondaryEffects()
@@ -250,7 +250,7 @@ export default class WidgetBase
      * @param {string} proportionDollars the fraction of the totalDollars
      * @returns {float}
      */
-    makeProportions(totalDollars, proportionDollars)
+    getMaskedProportion(totalDollars, proportionDollars)
     {
         const proportion = dollarsToFloat(proportionDollars) / dollarsToFloat(totalDollars);
         return this.maskValue * proportion;
@@ -268,9 +268,9 @@ export default class WidgetBase
                 {
                     WidgetBase.makeClones(node);
                 }
-                node.classList.add(WidgetBase.hiddenClass); // hide the original node
+                WidgetBase.hideNode(node); // hide the original node
                 const clone = node.nextSibling;
-                clone.classList.remove(WidgetBase.hiddenClass); // reveal clone
+                WidgetBase.showNode(clone); // reveal clone
                 clone.textContent = maskCurrencyString;
         }
         applyToSingleElemOrList(nodes, _maskUp);
@@ -283,10 +283,10 @@ export default class WidgetBase
     static unmask(nodes)
     {
         const _unmask = (node) => {
-            node.classList.remove('money-mask-hidden'); // reveal the original node
+            WidgetBase.showNode(node); // reveal the original node
             if (node.dataset.hasClone == "true") // ensure it does have a clone
             {
-                node.nextSibling.classList.add('money-mask-hidden'); // hide the clone
+                WidgetBase.hideNode(node.nextSibling);// hide the clone
             }
         }
         console.log("widget maskDown")
@@ -350,5 +350,45 @@ export default class WidgetBase
 
         };
         applyToSingleElemOrList(nodes, _makeClone);
+    }
+
+    /**
+     * Hide the node by memoizing the original display value in the dataset and then 
+     * setting the display to none. We do this way instead of adding a class because some 
+     * pre-existing CSS selectors may override our class.
+     * @param {Node} node
+     */
+    static hideNode(node)
+    {
+        if (!node.dataset)
+        {
+            node.dataset = {};
+        }
+        if (node.dataset.originalDisplay === undefined) // don't accidentally overwrite with "none"
+        {
+            node.dataset.originalDisplay = node.style.display ? node.style.display : ""; // the empty string defaults to the element's default display value
+        }
+        node.style.display = "none";
+    }
+
+    /**
+     * Restore the node's display value to the original value. We do this way instead of adding a 
+     * class because some pre-existing CSS selectors may override our class.
+     * @param {Node} node 
+     */
+    static showNode(node)
+    {
+        if (node.style.display == "none")
+        {
+            if (node.dataset && node.dataset.originalDisplay !== false) // make sure it has been set
+            {
+                node.style.display = node.dataset.originalDisplay;
+            }
+            else
+            {
+                node.style.display = ""; // the empty string defaults to the element's default display value
+            }
+        }
+        // do nothing if it is not hidden
     }
 }
