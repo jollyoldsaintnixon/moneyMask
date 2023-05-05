@@ -23,14 +23,13 @@ export function arrayToList(nodeArray)
  * @param {int|float} value 
  * @returns {string} value as dollars
  */
-export function toDollars(value)
+export function toDollars(value, withCents = true)
 {
-    // console.log("helper toDollars")
     const formatter = new Intl.NumberFormat('en-US', {
         style: 'currency',
         currency: 'USD',
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2,
+        minimumFractionDigits: withCents ? 2 : 0,
+        maximumFractionDigits: withCents ? 2 : 0,
     });
     return formatter.format(value);
 }
@@ -107,12 +106,12 @@ export function bindHandlers(that)
 
 /**
  * Strip a string to a number
- * @param {float|int} value 
+ * @param {string} str 
  * @returns {float} float
  */
-export function stripToNumber(value)
+export function stripToNumber(str)
 {
-    return parseFloat(value.replace(/[^0-9.-]+/g,""));
+    return parseFloat(str.replace(/[^0-9.-]+/g,""));
 }
 
 /**
@@ -127,7 +126,6 @@ export function applyToSingleElemOrList(elemOrList, func, ...args)
     {
         return; // cut it short here
     }
-    // else if (elemOrList.length >= 0)
     else if (typeof elemOrList[Symbol.iterator] === 'function')
     {
         for (const elem of elemOrList)

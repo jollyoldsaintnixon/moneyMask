@@ -38,8 +38,6 @@ export default class SummarySidebarWidget extends WidgetBase
     {
         console.log("summaryWidget maskGroupTotalValues");
         const groupTotalNodes = this.getGroupTotalNodes();
-        // make clones
-        // WidgetBase.makeClones(groupTotalNodes);
         // subfunction to get common ancestor of targetNode and groupTotalNode
         const getCommonGroupAncestor = (node) =>
         {
@@ -58,15 +56,12 @@ export default class SummarySidebarWidget extends WidgetBase
         // loop through each group total node
         for (const groupTotalNode of groupTotalNodes)
         {
-            // let groupTotal = null;
             const commonGroupAncestor = getCommonGroupAncestor(groupTotalNode);
             if (commonGroupAncestor)
             {
                 const groupTotal = commonGroupAncestor.querySelectorAll(this.targetNodeSelector).length * this.maskValue;
                 WidgetBase.maskUp(groupTotalNode, toDollars(groupTotal));
             }
-            // this.saveValue(groupTotalNode, groupTotal);
-            // groupTotalNode.textContent = toDollars(groupTotal);
         }
     }
 
@@ -80,11 +75,8 @@ export default class SummarySidebarWidget extends WidgetBase
         const gainNode = this.getGainNode(targetNode);
         // ensure that there is a gain node for this account
         if (!gainNode) return;
-        const proportion = this.makeProportions(targetNode.textContent, gainNode.textContent);
-        // this.saveValue(gainNode, proportion);
-        // WidgetBase.makeClones(gainNode);
+        const proportion = this.getMaskedProportion(targetNode.textContent, gainNode.textContent);
         WidgetBase.maskUp(gainNode, toGainDollars(proportion));
-        // gainNode.textContent = toGainDollars(proportion);
     }
 
     /**
@@ -96,14 +88,7 @@ export default class SummarySidebarWidget extends WidgetBase
     {
         console.log("summaryWidget maskAccountsTotalValue")
         const total = this.getTargetNodes().length * this.maskValue;
-
-        // if (!this.secondaryEffectValuesSaved && this.getAccountsTotal().textContent !== total)
-        // {
-            // this.saveValue(this.getAccountsTotal(), total);
-        // }
-        // WidgetBase.makeClones(this.getAccountsTotal());
         WidgetBase.maskUp(this.getAccountsTotal(), toDollars(total));
-        // this.getAccountsTotal().textContent = toDollars(total); 
     }
 
     /**
