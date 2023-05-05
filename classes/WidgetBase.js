@@ -36,7 +36,6 @@ export default class WidgetBase
         this.maskValue = maskValue;
         this.isMaskOn = isMaskOn;
         this.activateWideSearchObserver();
-        this.maskUpOrDownSwitch();
     }
 
     /**
