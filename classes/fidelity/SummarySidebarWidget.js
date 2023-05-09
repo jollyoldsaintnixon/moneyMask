@@ -12,6 +12,8 @@ export default class SummarySidebarWidget extends WidgetBase
     accountsTotal = null; // node that has the total of totals. I memoize it since it is a single node and easy to track.
     groupTotalNodesSelector = '.acct-selector__group-balance'; // each "group" of accounts (ie retirement, custodial, etc) has a total
 
+    /************************ MASKERS ***********************/
+
     /**
      * Updates the "gain" node for each account (the gain/loss for the day).
      * Updates the sum value of all accounts.
@@ -72,7 +74,7 @@ export default class SummarySidebarWidget extends WidgetBase
     maskGainNodeValue(targetNode)
     {
         console.log("summaryWidget maskGainNodeValue", targetNode)
-        const gainNode = this.getGainNode(targetNode);
+        const gainNode = SummarySidebarWidget.getGainNode(targetNode);
         // ensure that there is a gain node for this account
         if (!gainNode) return;
         const proportion = this.getMaskedProportion(targetNode.textContent, gainNode.textContent);
@@ -91,6 +93,46 @@ export default class SummarySidebarWidget extends WidgetBase
         WidgetBase.maskUp(this.getAccountsTotal(), toDollars(total));
     }
 
+    /************************ RESETTERS ***********************/
+
+
+    resetSecondaryEffects()
+    {
+        console.log("summaryWidget resetSecondaryEffects");
+        for (const node of this.targetNodeList)
+        {
+            this.resetGainNodeValue(node);
+        }
+        this.resetAccountsTotalValue();
+        this.resetGroupTotalValues();
+    }
+
+    resetGainNodeValue(node)
+    {
+        console.log("summaryWidget resetGainNodeValue", node)
+        const gainNode = SummarySidebarWidget.getGainNode(node);
+        if (!gainNode) return;
+        WidgetBase.unmask(gainNode);
+    }
+
+    resetAccountsTotalValue()
+    {
+        console.log("summaryWidget resetAccountsTotalValue");
+        WidgetBase.unmask(this.getAccountsTotal());
+    }
+
+    resetGroupTotalValues()
+    {
+        console.log("summaryWidget resetGroupTotalValues");
+        const groupTotalNodes = this.getGroupTotalNodes();
+        for (const groupTotalNode of groupTotalNodes)
+        {
+            WidgetBase.unmask(groupTotalNode);
+        }
+    }
+
+    /************************ GETTERS ***********************/
+
     /**
      * Get the gain/loss node for the given node.
      * The gain node is the node with the daily gain/loss value.
@@ -98,7 +140,7 @@ export default class SummarySidebarWidget extends WidgetBase
      * @param {Node} starterNode 
      * @returns Node|null
      */
-    getGainNode(starterNode)
+    static getGainNode(starterNode)
     {
         console.log('summaryWidget getGainNode', starterNode);
         let gainNode = null;
@@ -135,40 +177,5 @@ export default class SummarySidebarWidget extends WidgetBase
     getGroupTotalNodes()
     {
         return document.querySelectorAll(this.groupTotalNodesSelector + WidgetBase.notCloneSelector);;
-    }
-
-    resetSecondaryEffects()
-    {
-        console.log("summaryWidget resetSecondaryEffects");
-        for (const node of this.targetNodeList)
-        {
-            this.resetGainNodeValue(node);
-        }
-        this.resetAccountsTotalValue();
-        this.resetGroupTotalValues();
-    }
-
-    resetGainNodeValue(node)
-    {
-        console.log("summaryWidget resetGainNodeValue", node)
-        const gainNode = this.getGainNode(node);
-        if (!gainNode) return;
-        WidgetBase.unmask(gainNode);
-    }
-
-    resetAccountsTotalValue()
-    {
-        console.log("summaryWidget resetAccountsTotalValue");
-        WidgetBase.unmask(this.getAccountsTotal());
-    }
-
-    resetGroupTotalValues()
-    {
-        console.log("summaryWidget resetGroupTotalValues");
-        const groupTotalNodes = this.getGroupTotalNodes();
-        for (const groupTotalNode of groupTotalNodes)
-        {
-            WidgetBase.unmask(groupTotalNode);
-        }
     }
 }

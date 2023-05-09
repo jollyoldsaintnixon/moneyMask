@@ -3,7 +3,8 @@
 } */
 
 .money-mask-clone {
-    color: purple;
+    /* color: purple; */
+    font-weight: bolder;
 }
 
 .money-mask-blurred {

@@ -28,12 +28,13 @@ export default class PanelTotalWidget extends OnlySecondaryWidgetBase
     graphYAxisSelector = ".highcharts-yaxis-labels";
     graphNode = null;
     graphLabelNodes = arrayToList([]); 
-    graphObserver = null; // this will be the observer that watches for changes to a graph that reloads/replaces gain nodes
+    // graphObserver = null; // this will be the observer that watches for changes to a graph that reloads/replaces gain nodes
 
     constructor(maskValue = 100, isMaskOn = false) 
     {
         super(maskValue, isMaskOn);
         this.maskPortfolioTotalGainNode = this.maskPortfolioTotalGainNode.bind(this);
+        // this.observers.graphObserver = null; // this will be the observer that watches for changes to a graph that reloads/replaces gain nodes
         this.maskUpOrDownSwitch(); // I couldn't figure out how to call this in OnlySecondaryWidgetBase constructor. The value of catalystSelector was that of OnlySecondaryWidgetBase, not PanelTotalWidget. Weird.
     }
 
@@ -127,7 +128,7 @@ export default class PanelTotalWidget extends OnlySecondaryWidgetBase
 
     watchForHighCharts()
     {
-        this.graphObserver = WidgetBase.createObserver(this.getCommonAncestorNode(), (mutations) => {
+        this.observers.graphObserver = WidgetBase.createObserver(this.getCommonAncestorNode(), (mutations) => {
             console.log('summaryBodyTotalWidget watchForHighCharts callback');
             for (const mutation of mutations)
             {
@@ -138,7 +139,7 @@ export default class PanelTotalWidget extends OnlySecondaryWidgetBase
                         this.maskGraphLabels();
                     }
                     this.initHighChartsListener(); // this.graphNode is set by this.graphWasFound() if any nodes were found
-                    this.graphObserver.disconnect();
+                    this.observers.graphObserver.disconnect();
                     break;
                 }
             }

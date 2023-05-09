@@ -26,9 +26,10 @@ export default class WidgetBase
     targetCommonAncestorNode = null; // This is the overarching container of the widget.
     wideAreaSearchNode = null; // this should very likely be the entire body
 
-
-    searchingObserver; // runs until targets found
-    targetedObserver; // only watches targets
+    observers = {
+        searchingObserver: null, // runs until targets found
+        targetedObserver: null, // only watches targets
+    }
 
     constructor(maskValue = 100, isMaskOn = false) 
     {
@@ -84,14 +85,16 @@ export default class WidgetBase
      */
     deactivate()
     {
-        console.log("widget deactivate")
-        if (this.searchingObserver)
+        for (const key in this.observers)
         {
-            this.searchingObserver.disconnect();
-        }
-        if (this.targetedObserver)
-        {
-            this.targetedObserver.disconnect();
+            if (obj.hasOwnProperty(key))
+            {
+                const observer = this.observers[key];
+                if (observer) // make sure it is not set to null
+                {
+                    observer.disconnect();
+                }
+            }
         }
     }
 
@@ -106,7 +109,7 @@ export default class WidgetBase
     activateWideSearchObserver() 
     {
         console.log("widget activateWideSearchObserver")
-        this.searchingObserver = WidgetBase.createObserver(this.getWideAreaSearchNode(), (mutations) => {
+        this.observers.searchingObserver = WidgetBase.createObserver(this.getWideAreaSearchNode(), (mutations) => {
             console.log("widget activateWideSearchObserver callback")
             console.log("search mutations.length: ", mutations.length)
             for (const mutation of mutations) 
@@ -127,7 +130,7 @@ export default class WidgetBase
                     }
                     finally
                     {
-                        this.searchingObserver.disconnect();
+                        this.observers.searchingObserver.disconnect();
                         break;
                     }
                 }
@@ -142,7 +145,7 @@ export default class WidgetBase
     {
         this.targetCommonAncestorNode = this.targetCommonAncestorNode ?? document.querySelectorAll(this.targetCommonAncestorSelector); // set targetCommonAncestorNode if it is not already set
         console.log("widget activateTargetedObserver")
-        this.targetedObserver = WidgetBase.createObserver(this.targetCommonAncestorNode, (mutations) => {
+        this.observers.targetedObserver = WidgetBase.createObserver(this.targetCommonAncestorNode, (mutations) => {
             console.log("widget targetedObserver callback")
             console.log("target mutations.length: ", mutations.length)
             for (const mutation of mutations)
