@@ -1,3 +1,7 @@
+import { 
+    stripToNumber, 
+    toDollars, 
+} from "../../helpers.js";
 import WidgetBase from "../../WidgetBase.js";
 /** This widget represents the "pop out" sidebar trade menu. It can be accessed though a security row listed in the portfolio positions tab, or by clicking the "Trade" button located immediately below the "Accounts & Trade" button when in the portofolio section of the site. 
  * 
@@ -12,11 +16,14 @@ import WidgetBase from "../../WidgetBase.js";
  * We do not need to disable any buttons since this widget only links to the trade preview. */
 export default class PopOutTradesWidget extends WidgetBase 
 {
-    targetNodeSelector = "#eq-ticket__account-balance > div:nth-child(2) > div:nth-child(2)"; // non-margin buying power
+    targetNodeSelector = "#eq-ticket__account-balance > div:nth-child(1) > div:nth-child(2)"; // non-margin buying power
     targetCommonAncestorSelector = "#eq-ticket__account-balance";
-
-    marginBuyingPowerSelector = "#eq-ticket__account-balance > div:nth-child(1) > div:nth-child(2)";
-    withoutMarginSelector = "#eq-ticket__account-balance > div:nth-child(3) > div:nth-child(2)";
+    
+    nonMarginSelector = "#eq-ticket__account-balance > div:nth-child(2) > div:nth-child(2)"; // non-margin buying power
+    nonMargin = null;
+    // marginBuyingPowerSelector = "#eq-ticket__account-balance > div:nth-child(1) > div:nth-child(2)";
+    withoutMarginImpactSelector = "#eq-ticket__account-balance > div:nth-child(3) > div:nth-child(2)";
+    withoutMarginImpact = null;
 
     ownedAmountSelector = "#eq-ticket__owned-quantity-all > div:nth-child(2)" // I need to listen to this
     ownedAmountParentSelector = "#eqt-mts-stock-quatity" // it's a custom element
@@ -45,13 +52,52 @@ export default class PopOutTradesWidget extends WidgetBase
 
     maskSecondaryEffects()
     {
-        this.maskOwnedAmount();
-        this.maskErrorMessage();
+        if (this.getPopUpNode())
+        {
+            this.maskWithoutMarginImpact();
+            this.maskNonMargin();
+            this.maskOwnedAmount();
+            this.maskErrorMessage();
+        }
+    }
+
+    maskWithoutMarginImpact()
+    {
+        const withoutMarginImpact = this.getWithoutMarginImpact();
+        const withMargin = this.getWithMargin();
+        if (withoutMarginImpact && withMargin)
+        {
+            let maskValue = this.maskValue; // default to the mask value
+            if (withMargin)
+            {
+                maskValue = this.getMaskedProportion(withMargin.textContent, withoutMarginImpact.textContent); // mask value will ideally be the proportion of the unmasked value to the margin buying power 
+            }
+            WidgetBase.maskUp(withoutMarginImpact, toDollars(maskValue));
+        }
+    }
+
+    maskNonMargin()
+    {
+        const nonMargin = this.getNonMargin();
+        const withoutMarginImpact = this.getWithoutMarginImpact();
+        const withMargin = this.getWithMargin();
+        if (nonMargin)
+        {
+            let maskValue = this.maskValue; // default to the mask value
+            if (withMargin && withoutMarginImpact)
+            {
+                // add the values of margin and the without impact nodes and divide by two
+                maskValue = stripToNumber(withMargin.textContent) + stripToNumber(withoutMarginImpact.textContent);
+                maskValue /= 2;
+                maskValue = this.getMaskedProportion(withMargin.textContent, `${maskValue}`); // mask value will ideally be the proportion of the unmasked value to the margin buying power
+            }
+            WidgetBase.maskUp(nonMargin, toDollars(maskValue));
+        }
     }
 
     maskOwnedAmount()
     {
-        const ownedAmount = WidgetBase.getNodeFromList(this.popUpNode, this.ownedAmountSelector);;
+        const ownedAmount = WidgetBase.getNodeFromList(this.getPopUpNode(), this.ownedAmountSelector);
         if (ownedAmount)
         {
           // console.log("ownedAmount", ownedAmount);
@@ -61,17 +107,21 @@ export default class PopOutTradesWidget extends WidgetBase
 
     maskErrorMessage()
     {
-        const errorDiv = WidgetBase.getNodeFromList(this.popUpNode, this.errorSelector);
+        const errorDiv = WidgetBase.getNodeFromList(this.getPopUpNode(), this.errorSelector);
         if (errorDiv)
         {
-            const errorCode = errorDiv.innerText.match(/\((\d+)\)/)[1] // return the error code found within the first set of parens
-            switch (this.errorCodes[errorCode]) 
+            const matches = errorDiv.innerText.match(/\((\d+)\)/);
+            if (matches)
             {
-                case "insufficientShares":
-                    this.maskInsufficientShares(errorDiv);
-                    break;
-                default:
-                    break;
+                const errorCode = matches[1] // return the error code found within the first set of parens
+                switch (this.errorCodes[errorCode]) 
+                {
+                    case "insufficientShares":
+                        this.maskInsufficientShares(errorDiv);
+                        break;
+                    default:
+                        break;
+                }
             }
         }
     }
@@ -94,13 +144,25 @@ export default class PopOutTradesWidget extends WidgetBase
 
     resetSecondaryEffects()
     {
+        this.resetNonMargin();
+        this.resetWithoutMarginImpact();
         this.resetOwnedAmount();
         this.resetErrorMessage();
     }
 
+    resetWithoutMarginImpact()
+    {
+        WidgetBase.unmask(this.getWithoutMarginImpact());
+    }
+
+    resetNonMargin()
+    {
+        WidgetBase.unmask(this.getNonMargin());
+    }
+
     resetOwnedAmount()
     {
-        const ownedAmount = WidgetBase.getNodeFromList(this.popUpNode, this.ownedAmountSelector);
+        const ownedAmount = WidgetBase.getNodeFromList(this.getPopUpNode(), this.ownedAmountSelector);
         if (ownedAmount)
         {
             ownedAmount.classList.remove("money-mask-blurred"); // remove class "money-mask-blurred" from the owned amount
@@ -110,17 +172,21 @@ export default class PopOutTradesWidget extends WidgetBase
 
     resetErrorMessage()
     {
-        const errorDiv = WidgetBase.getNodeFromList(this.popUpNode, this.errorSelector);
+        const errorDiv = WidgetBase.getNodeFromList(this.getPopUpNode(), this.errorSelector);
         if (errorDiv)
         {
-            const errorCode = errorDiv.innerText.match(/\((\d+)\)/)[1] // return the error code found within the first set of parens
-            switch (this.errorCodes[errorCode]) 
+            const matches = errorDiv.innerText.match(/\((\d+)\)/);
+            if (matches)
             {
-                case "insufficientShares":
-                    this.resetInsufficientShares(errorDiv);
-                    break;
-                default:
-                    break;
+                const errorCode = matches[1] // return the error code found within the first set of parens
+                switch (this.errorCodes[errorCode]) 
+                {
+                    case "insufficientShares":
+                        this.resetInsufficientShares(errorDiv);
+                        break;
+                    default:
+                        break;
+                }
             }
         }
     }
@@ -132,6 +198,34 @@ export default class PopOutTradesWidget extends WidgetBase
     }
 
     /******************** GETTERS **********************/
+
+    getNonMargin()
+    {
+        if (!this.nonMargin || !this.nonMargin.isConnected)
+        {
+            this.nonMargin = WidgetBase.getNodeFromList(this.getPopUpNode(), this.nonMarginSelector);
+        }
+        return this.nonMargin;
+    }
+
+    getWithoutMarginImpact()
+    {
+        if (!this.withoutMarginImpact || !this.withoutMarginImpact.isConnected)
+        {
+            this.withoutMarginImpact = WidgetBase.getNodeFromList(this.getPopUpNode(), this.withoutMarginImpactSelector);
+        }
+        return this.withoutMarginImpact;
+    }
+
+    getWithMargin()
+    {
+        return this.getTargetNodes()[0];
+    }
+
+    getPopUpNode()
+    {
+        return this.popUpNode; // it may return null, that is fine. we only want to set this in the pop up observer.
+    }
 
     /******************** WATCHERS ************************/
 
@@ -192,8 +286,8 @@ export default class PopOutTradesWidget extends WidgetBase
                 };
             }
         }
-        this.popUpNode = this.popUpNode ?? document.querySelector(this.popUpSelector);
-        this.observers.ownedAmountObserver = WidgetBase.createObserver(this.popUpNode, _watchForOwnedAmountCB);
+        // this.popUpNode = this.popUpNode ?? document.querySelector(this.popUpSelector);
+        this.observers.ownedAmountObserver = WidgetBase.createObserver(this.getPopUpNode(), _watchForOwnedAmountCB);
     }
 
     /**
@@ -216,8 +310,8 @@ export default class PopOutTradesWidget extends WidgetBase
                 };
             }
         }
-        this.popUpNode = this.popUpNode ?? document.querySelector(this.popUpSelector);
-        this.observers.submitObserver = WidgetBase.createObserver(this.popUpNode, _watchForSubmitCB);
+        // this.popUpNode = this.popUpNode ?? document.querySelector(this.popUpSelector);
+        this.observers.submitObserver = WidgetBase.createObserver(this.getPopUpNode(), _watchForSubmitCB);
     }
 
     /**
@@ -231,7 +325,7 @@ export default class PopOutTradesWidget extends WidgetBase
                 for (const mutation of mutations) 
                 {
                     if ((mutation.type === 'childList' || mutation.type === 'subtree' || mutation.attributeName === 'class') // once the errorDiv is created, only class changes will occur
-                    && WidgetBase.getNodeFromList(this.popUpNode, this.errorSelector)) // set errorDiv if found in the added nodes
+                    && WidgetBase.getNodeFromList(this.getPopUpNode(), this.errorSelector)) // set errorDiv if found in the added nodes
                     {
                         this.maskErrorMessage();
                         WidgetBase.tryDisconnect(this.observers.errorMessageObserver); // disconnect the error message observer if the error message is found.
@@ -240,9 +334,9 @@ export default class PopOutTradesWidget extends WidgetBase
                 };
             }
         }
-        this.popUpNode = this.popUpNode ?? document.querySelector(this.popUpSelector);
+        // this.popUpNode = this.popUpNode ?? document.querySelector(this.popUpSelector);
         const observerConfig = Object.assign({ attributes: true, }, WidgetBase.observerConfig); // add the base observer config to this observer config (we also want to watch for changes in classlist)
-        this.observers.errorMessageObserver = WidgetBase.createObserver(this.popUpNode, _watchForErrorMessageCB, false, 1, observerConfig);
+        this.observers.errorMessageObserver = WidgetBase.createObserver(this.getPopUpNode(), _watchForErrorMessageCB, false, 1, observerConfig);
     }
 
     /******************** OTHERS ************************/
@@ -250,7 +344,7 @@ export default class PopOutTradesWidget extends WidgetBase
 
     handleSubmit()
     {
-        this.submitButton = this.submitButton ?? this.popUpNode.querySelector(this.submitButtonSelector);
+        this.submitButton = this.submitButton ?? this.getPopUpNode().querySelector(this.submitButtonSelector);
         this.submitButton.addEventListener('click', () => {
             this.watchForErrorMessage();
         });
