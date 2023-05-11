@@ -15,7 +15,7 @@ export default class BackgroundScript
 
     constructor()
     {
-        console.log('background script constructor');
+      // console.log('background script constructor');
         // bind "this" to the instance for all handlers. I can't import the helper function to the backbround script for some reason
         for (const key of Object.getOwnPropertyNames(Object.getPrototypeOf(this)))
         {
@@ -33,16 +33,16 @@ export default class BackgroundScript
     */
     async init()
     {
-        console.log('background script init');
+      // console.log('background script init');
         this.isMaskOn = await BackgroundScript.getIsMaskOn(); // get the current mask state initially. later update only when user does so
-        console.log('isMaskOn', this.isMaskOn);
+      // console.log('isMaskOn', this.isMaskOn);
         const currentTab = await BackgroundScript.getCurrentTab();
         this.updateIcon(currentTab);
     }
 
     setUpListeners()
     {
-        console.log('background script setUpListeners');
+      // console.log('background script setUpListeners');
         chrome.runtime.onConnect.addListener(this.handlePortConnect); // fired when a connection is made from either an extension process or a content script (e.g. via runtime.connect)
         chrome.runtime.onMessage.addListener(this.handleMessage); // ready for content scripts
         chrome.tabs.onUpdated.addListener(this.handleTabUpdated); // fires when a tab is updated. The update can be due to various reasons, such as changes in the URL, page title, favicon, or other properties. The event provides information about the updated tab, including its ID, changeInfo (an object containing properties that have changed), and the tab object itself.
@@ -54,7 +54,7 @@ export default class BackgroundScript
 
     handlePortConnect(port)
     {
-        console.log('background script handlePortConnect');
+      // console.log('background script handlePortConnect');
         if (port.name.endsWith('ContentScript'))
         {
             this.handleContentScriptPort(port);
@@ -70,7 +70,7 @@ export default class BackgroundScript
      */
     handleMessage(request, sender, sendResponse)
     {
-        console.log('background script handleMessage', request, sender, sendResponse);
+      // console.log('background script handleMessage', request, sender, sendResponse);
     }
 
     /**
@@ -82,7 +82,7 @@ export default class BackgroundScript
      * @param {*} tab 
      */
     handleTabUpdated(tabId, changeInfo, tab) {
-        console.log('background script handleTabUpdated', tabId, changeInfo, tab);
+      // console.log('background script handleTabUpdated', tabId, changeInfo, tab);
         this.updateIcon(tab);
     }
 
@@ -95,7 +95,7 @@ export default class BackgroundScript
      */
     handleTabActivated(activeInfo) 
     {
-        console.log('background script handleTabActivated', activeInfo);
+      // console.log('background script handleTabActivated', activeInfo);
         chrome.tabs.get(activeInfo.tabId, (tab) => {
           this.updateIcon(tab);
           this.sendMessageToContentScript(tab.id, { type: 'isMaskOn', value: this.isMaskOn, });
@@ -109,7 +109,7 @@ export default class BackgroundScript
      */
     handleFullPageLoad(details) 
     {
-        console.log('background script handleFullPageLoad', details);
+      // console.log('background script handleFullPageLoad', details);
         chrome.tabs.get(details.tabId, (tab) => {
             this.updateIcon(tab);
         });
@@ -123,7 +123,7 @@ export default class BackgroundScript
      */
     handleStorageChange(changes, areaName)
     {
-        console.log('background script handleStorageChange', changes, areaName);
+      // console.log('background script handleStorageChange', changes, areaName);
         if (areaName === 'sync')
         {
             if (changes.maskValue)
@@ -139,13 +139,13 @@ export default class BackgroundScript
 
     handleOnHistoryStateUpdated(details)
     {
-        console.log('background script handleOnHistoryStateUpdated', details);
+      // console.log('background script handleOnHistoryStateUpdated', details);
         this.urlUpdate(details.url);
     }
 
     async updateMaskValue(maskValue)
     {
-        console.log('background script updateMaskValue', maskValue);
+      // console.log('background script updateMaskValue', maskValue);
         // send a message to the content script with the updated value
         const tab = await BackgroundScript.getCurrentTab();
         this.sendMessageToContentScript(tab.id, { type: 'maskUpdate', value: maskValue });
@@ -164,12 +164,12 @@ export default class BackgroundScript
             console.warn('background script updateIcon no tab');
             return;
         }
-        console.log('background script updateIcon', tab);
+      // console.log('background script updateIcon', tab);
         const active = this.isMaskOn ? "Active" : "Inactive"; // determine whether or not the mask is "on"
         const iconFileBase = BackgroundScript.isDomainSupported(tab.url) ?  "icons/banditMask" : "icons/noMatch"; // test for a domain pattern match in the url
         const updatedIconPath = iconFileBase + active;
         // set the tab
-        console.log('updating icon from ', this.currentIconPath, ' to ', updatedIconPath);
+      // console.log('updating icon from ', this.currentIconPath, ' to ', updatedIconPath);
         chrome.action.setIcon({
             path: {
                 '16': updatedIconPath + "-16.png",
@@ -186,7 +186,7 @@ export default class BackgroundScript
      */
     async updateIsMaskOn(isMaskOn)
     {
-        console.log('background script updateIsMaskOn', isMaskOn)
+      // console.log('background script updateIsMaskOn', isMaskOn)
         // update our state
         this.isMaskOn = isMaskOn
         const tab = await BackgroundScript.getCurrentTab();
@@ -208,7 +208,7 @@ export default class BackgroundScript
         {
             tab = await BackgroundScript.getCurrentTab();
         }
-        console.log('background script urlUpdate', url, tab);
+      // console.log('background script urlUpdate', url, tab);
         this.sendMessageToContentScript(tab.id, { type: 'historyUpdate', value: url, });
     }
 
@@ -219,7 +219,7 @@ export default class BackgroundScript
      */
     sendMessageToContentScript(tabId, message)
     {
-        console.log('background script sendMessageToContentScript', tabId, message);
+      // console.log('background script sendMessageToContentScript', tabId, message);
         const port = this.contentScriptPorts[tabId];
         if (!port) // !no port, so no content script. this may trigger on every tab without a content script; need to check on this
         {
@@ -236,15 +236,15 @@ export default class BackgroundScript
      */
     handleContentScriptPort(port)
     {
-        console.log('background script handleContentScriptPort', port);
+      // console.log('background script handleContentScriptPort', port);
         this.contentScriptPorts[port.sender.tab.id] = port;
         port.onDisconnect.addListener(() => {
-            console.log(port.name + " disconnected at background script");
+          // console.log(port.name + " disconnected at background script");
             delete this.contentScriptPorts[port.sender.tab.id]; // delete port
         });
         port.onMessage.addListener((message) => {
             // * just logging for now
-            console.log("Message from " + port.type + " at background script", message);              
+          // console.log("Message from " + port.type + " at background script", message);              
         });
     }
 
@@ -255,13 +255,13 @@ export default class BackgroundScript
      */
     static isDomainSupported(url)
     {
-        console.log('background script isDomainSupported', url);
+      // console.log('background script isDomainSupported', url);
         return BackgroundScript.targetDomainRegexList.some(regex => regex.test(url));
     }
 
     static async getIsMaskOn()
     {
-        console.log('background script getIsMaskOn');
+      // console.log('background script getIsMaskOn');
         return new Promise((resolve) => {
             chrome.storage.sync.get('isMaskOn', function(data) 
             {
@@ -272,7 +272,7 @@ export default class BackgroundScript
 
     static async getMaskValue()
     {
-        console.log('background script getMaskValue');
+      // console.log('background script getMaskValue');
         return new Promise((resolve) => {
             chrome.storage.sync.get('maskValue', function(data) 
             {
@@ -283,7 +283,7 @@ export default class BackgroundScript
 
     static async getCurrentTab()
     {
-        console.log('background script getCurrentTab');
+      // console.log('background script getCurrentTab');
         return new Promise((resolve) => {
             chrome.tabs.query({ active: true, currentWindow: true, }, (tabs) => {
                 if (!tabs || !tabs[0])
@@ -308,7 +308,7 @@ function escapeRegExp(string) {
 
 if (typeof __TEST_ENV__ === 'undefined' || !__TEST_ENV__) // don't run this in test mode
 {
-    console.log("BACKGROUND SCRIPT WILL INIT")
+  // console.log("BACKGROUND SCRIPT WILL INIT")
     const backgroundScript = new BackgroundScript();
     backgroundScript.init();
 }
