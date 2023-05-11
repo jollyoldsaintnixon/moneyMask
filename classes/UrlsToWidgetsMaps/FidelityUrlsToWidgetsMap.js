@@ -9,6 +9,7 @@ export default {
         SummarySidebarWidget, 
         PanelTotalWidget,
         PanelIraWidget,
+        PopOutTradesWidget,
     ],
     "http[s]?:\/\/.+fidelity\.com\/.*portfolio\/positions": [
         SummarySidebarWidget,

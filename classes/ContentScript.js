@@ -9,14 +9,14 @@ export default class ContentScript
 
     constructor(WIDGET_MAP = {})
     {
-        console.log("ContentScript constructor")
+      // console.log("ContentScript constructor")
         bindHandlers(this);
         this.WIDGET_MAP = WIDGET_MAP;
     }
 
     init()
     {
-        console.log("ContentScript init")
+      // console.log("ContentScript init")
         if (document.readyState === 'loading') 
         {
             document.addEventListener('DOMContentLoaded', this.handleDocumentLoaded);
@@ -29,7 +29,7 @@ export default class ContentScript
 
     async handleDocumentLoaded()
     {
-        console.log('doc loaded');
+      // console.log('doc loaded');
         const maskValue = await ContentScript.getInitialMaskValue();
         const isMaskOn = await ContentScript.getInitialMaskActivated();
 
@@ -42,7 +42,7 @@ export default class ContentScript
      */
     connectToBackgroundScript()
     {
-        console.log('contentscript connectToBackgroundScript');
+      // console.log('contentscript connectToBackgroundScript');
         // set up port
         this.backgroundScriptPort = chrome.runtime.connect({ name: "ContentScript" });
         this.backgroundScriptPort.onDisconnect.addListener(() => {
@@ -55,7 +55,7 @@ export default class ContentScript
 
     handleMessageFromBackgroundScript(message)
     {
-        console.log('in the contentscript handleMessageFromBackgroundScript', message);
+      // console.log('in the contentscript handleMessageFromBackgroundScript', message);
         // ensure controller is set up
         if (!this.controller)
         {
@@ -78,20 +78,20 @@ export default class ContentScript
 
     setUpController(maskValue, isMaskOn)
     {
-        console.log('in the contentscript setUpController', maskValue, isMaskOn);
+      // console.log('in the contentscript setUpController', maskValue, isMaskOn);
         this.controller = new WidgetController(maskValue, isMaskOn, this.WIDGET_MAP);
         this.controller.loadWidgets(window.location.href);
     }
 
     static getInitialMaskValue()
     {
-        console.log('in the contentscript getInitialMaskValue'  )
+      // console.log('in the contentscript getInitialMaskValue'  )
         return chrome.storage.sync.get('maskValue').then(data => data.maskValue ?? 1);
     }
 
     static getInitialMaskActivated()
     {
-        console.log('in the contentscript getInitialMaskActivated');
+      // console.log('in the contentscript getInitialMaskActivated');
         return chrome.storage.sync.get('isMaskOn').then(data => data.isMaskOn ?? true);
     }
 }

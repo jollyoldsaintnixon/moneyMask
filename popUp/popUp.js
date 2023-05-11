@@ -1,7 +1,7 @@
 // this page is used to generate the content of popUp.html
 
 document.addEventListener('DOMContentLoaded', function() {
-    console.log('world')
+  // console.log('world')
     // Grab the root at top level
     const root = document.querySelector('#root');
 
@@ -31,16 +31,16 @@ document.addEventListener('DOMContentLoaded', function() {
         // Save the user's selection
         selectElement.addEventListener('change', function(e) {
             chrome.storage.sync.set({ 'maskValue': e.target.value }, function() {
-            console.log('Value saved:', e.target.value);
+          // console.log('Value saved:', e.target.value);
             });
         });
     
         // Retrieve and set the saved value when the popup is opened
         chrome.storage.sync.get('maskValue', function(data) {
-            console.log('looking for default value')
+          // console.log('looking for default value')
             if (data.maskValue) {
                 selectElement.value = data.maskValue;   
-                console.log('default value: ', data.maskValue);
+              // console.log('default value: ', data.maskValue);
             }
         });
 
@@ -87,16 +87,16 @@ document.addEventListener('DOMContentLoaded', function() {
         // Retrieve and set the saved value when the popup is opened
         chrome.storage.sync.get('isMaskOn', function(data) 
         {
-            console.log('restoring default mask activation')
+          // console.log('restoring default mask activation')
             if (data.isMaskOn) 
             {
-                console.log('mask was active');
+              // console.log('mask was active');
                 toggleButton.classList.add('toggle-active');
                 toggleButton.textContent = "Unmask";
             }
             else
             {
-                console.log('mask was inactive');
+              // console.log('mask was inactive');
                 toggleButton.classList.remove('toggle-active');
                 toggleButton.textContent = "Mask Up";
             }

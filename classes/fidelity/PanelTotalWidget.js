@@ -45,7 +45,7 @@ export default class PanelTotalWidget extends OnlySecondaryWidgetBase
      */
     maskSecondaryEffects()
     {
-        console.log('summaryBodyTotalWidget maskSecondaryEffects')
+      // console.log('summaryBodyTotalWidget maskSecondaryEffects')
         if (!this.listenersInitiated) // only listen once
         {
             this.listenersInitiated = this.initiateListeners();
@@ -129,7 +129,7 @@ export default class PanelTotalWidget extends OnlySecondaryWidgetBase
     watchForHighCharts()
     {
         this.observers.graphObserver = WidgetBase.createObserver(this.getCommonAncestorNode(), (mutations) => {
-            console.log('summaryBodyTotalWidget watchForHighCharts callback');
+          // console.log('summaryBodyTotalWidget watchForHighCharts callback');
             for (const mutation of mutations)
             {
                 if (this.getGraphNode())
@@ -252,7 +252,7 @@ export default class PanelTotalWidget extends OnlySecondaryWidgetBase
      */
     getGainNode(starterNode)
     {
-        console.log('summaryBodyTotalWidget getGainNode', starterNode);
+      // console.log('summaryBodyTotalWidget getGainNode', starterNode);
         // if (this.gainNode) return this.gainNode; // short circuit if already found
         let gainNode = null;
         try
@@ -274,7 +274,7 @@ export default class PanelTotalWidget extends OnlySecondaryWidgetBase
 
     resetSecondaryEffects()
     {
-        console.log('summaryBodyTotalWidget resetSecondaryEffects');
+      // console.log('summaryBodyTotalWidget resetSecondaryEffects');
         this.resetPortfolioTotalNode();
         this.resetPortfolioTotalGainNode();
         this.resetGraphLabels();

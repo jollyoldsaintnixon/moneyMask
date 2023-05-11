@@ -21,7 +21,7 @@ export default class SummarySidebarWidget extends WidgetBase
      */
     maskSecondaryEffects()
     {
-        console.log('summaryWidget maskSecondaryEffects')
+      // console.log('summaryWidget maskSecondaryEffects')
         for (const node of this.targetNodeList)
         {
             this.maskGainNodeValue(node);
@@ -38,7 +38,7 @@ export default class SummarySidebarWidget extends WidgetBase
      */
     maskGroupTotalValues()
     {
-        console.log("summaryWidget maskGroupTotalValues");
+      // console.log("summaryWidget maskGroupTotalValues");
         const groupTotalNodes = this.getGroupTotalNodes();
         // subfunction to get common ancestor of targetNode and groupTotalNode
         const getCommonGroupAncestor = (node) =>
@@ -52,7 +52,7 @@ export default class SummarySidebarWidget extends WidgetBase
                 }
                 ancestor = ancestor.parentElement;
             }
-            console.log("ancestor:", ancestor);
+          // console.log("ancestor:", ancestor);
             return ancestor;
         }
         // loop through each group total node
@@ -73,7 +73,7 @@ export default class SummarySidebarWidget extends WidgetBase
      */
     maskGainNodeValue(targetNode)
     {
-        console.log("summaryWidget maskGainNodeValue", targetNode)
+      // console.log("summaryWidget maskGainNodeValue", targetNode)
         const gainNode = SummarySidebarWidget.getGainNode(targetNode);
         // ensure that there is a gain node for this account
         if (!gainNode) return;
@@ -88,7 +88,7 @@ export default class SummarySidebarWidget extends WidgetBase
      */ 
     maskAccountsTotalValue()
     {
-        console.log("summaryWidget maskAccountsTotalValue")
+      // console.log("summaryWidget maskAccountsTotalValue")
         const total = this.getTargetNodes().length * this.maskValue;
         WidgetBase.maskUp(this.getAccountsTotal(), toDollars(total));
     }
@@ -98,7 +98,7 @@ export default class SummarySidebarWidget extends WidgetBase
 
     resetSecondaryEffects()
     {
-        console.log("summaryWidget resetSecondaryEffects");
+      // console.log("summaryWidget resetSecondaryEffects");
         for (const node of this.targetNodeList)
         {
             this.resetGainNodeValue(node);
@@ -109,7 +109,7 @@ export default class SummarySidebarWidget extends WidgetBase
 
     resetGainNodeValue(node)
     {
-        console.log("summaryWidget resetGainNodeValue", node)
+      // console.log("summaryWidget resetGainNodeValue", node)
         const gainNode = SummarySidebarWidget.getGainNode(node);
         if (!gainNode) return;
         WidgetBase.unmask(gainNode);
@@ -117,13 +117,13 @@ export default class SummarySidebarWidget extends WidgetBase
 
     resetAccountsTotalValue()
     {
-        console.log("summaryWidget resetAccountsTotalValue");
+      // console.log("summaryWidget resetAccountsTotalValue");
         WidgetBase.unmask(this.getAccountsTotal());
     }
 
     resetGroupTotalValues()
     {
-        console.log("summaryWidget resetGroupTotalValues");
+      // console.log("summaryWidget resetGroupTotalValues");
         const groupTotalNodes = this.getGroupTotalNodes();
         for (const groupTotalNode of groupTotalNodes)
         {
@@ -142,7 +142,7 @@ export default class SummarySidebarWidget extends WidgetBase
      */
     static getGainNode(starterNode)
     {
-        console.log('summaryWidget getGainNode', starterNode);
+      // console.log('summaryWidget getGainNode', starterNode);
         let gainNode = null;
         try
         {
@@ -162,7 +162,7 @@ export default class SummarySidebarWidget extends WidgetBase
      */
     getAccountsTotal()
     {
-        console.log("summaryWidget getAccountsTotal")
+      // console.log("summaryWidget getAccountsTotal")
         if (!this.accountsTotal)
         {
             this.accountsTotal = document.querySelector(this.accountsTotalSelector + WidgetBase.notCloneSelector);

@@ -13,7 +13,7 @@ export default class WidgetController
 
     constructor(maskValue, isMaskOn, WIDGET_MAP = {})
     {
-        console.log('in the controller constructor');
+      // console.log('in the controller constructor');
         this.maskValue = maskValue;
         this.isMaskOn = isMaskOn;
         this.WIDGET_MAP = WIDGET_MAP;
@@ -28,7 +28,7 @@ export default class WidgetController
      */
     loadWidgets(url)
     {
-        console.log("loading widgets for url: ", url)
+      // console.log("loading widgets for url: ", url)
         let matchingUrlFound = false;
         for (const regex in this.WIDGET_MAP) 
         {
@@ -53,7 +53,7 @@ export default class WidgetController
      */
     updateMaskValue(maskValue)
     {
-        console.log("widgetController updating mask value to: ", maskValue)
+      // console.log("widgetController updating mask value to: ", maskValue)
         this.maskValue = maskValue; // update the value locally so we can pass it to any widgets that we create later
         for (const widgetClass in this.currentWidgets)  // update all current widgets
         {
@@ -67,7 +67,7 @@ export default class WidgetController
      */
     updateMaskActivated(isMaskOn)
     {
-        console.log("widgetController updating mask activated to: ", isMaskOn)
+      // console.log("widgetController updating mask activated to: ", isMaskOn)
         this.isMaskOn = isMaskOn; // update the value locally so we can pass it to any widgets that we create later
         for (const widgetClass in this.currentWidgets)
         {
@@ -82,7 +82,7 @@ export default class WidgetController
     deactivateWidgets(upcomingWidgets)
     {
         upcomingWidgets = upcomingWidgets ?? []; // default to empty array
-        console.log("widgetController deactivating widgets. upcomingWidgets: ", upcomingWidgets, " currentWidgets: ", this.currentWidgets);
+      // console.log("widgetController deactivating widgets. upcomingWidgets: ", upcomingWidgets, " currentWidgets: ", this.currentWidgets);
         for (const widgetClassName in this.currentWidgets) 
         {
             if (!upcomingWidgets.some(widget => { // don't deactivate widgets that are still active 
@@ -103,7 +103,7 @@ export default class WidgetController
      */
     activateWidgets(widgetClassArr)
     {
-        console.log("widgetController activating widgets: ", widgetClassArr);
+      // console.log("widgetController activating widgets: ", widgetClassArr);
         widgetClassArr.forEach(widgetClass => {
             // only make a new instance if it isn't already running
             if (!this.currentWidgets[widgetClass.name])

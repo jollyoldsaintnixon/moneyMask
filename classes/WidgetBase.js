@@ -33,7 +33,7 @@ export default class WidgetBase
 
     constructor(maskValue = 100, isMaskOn = false) 
     {
-        console.log("widget constuctor")
+      // console.log("widget constuctor")
         this.maskValue = maskValue;
         this.isMaskOn = isMaskOn;
         this.activateWideSearchObserver();
@@ -48,7 +48,7 @@ export default class WidgetBase
      */
     updateMaskValue(maskValue)
     {
-        console.log("widget updateMaskValue", maskValue)
+      // console.log("widget updateMaskValue", maskValue)
         this.maskValue = maskValue;
         this.maskUpOrDownSwitch();
     }
@@ -108,10 +108,10 @@ export default class WidgetBase
      */
     activateWideSearchObserver() 
     {
-        console.log("widget activateWideSearchObserver")
+      // console.log("widget activateWideSearchObserver")
         this.observers.searchingObserver = WidgetBase.createObserver(this.getWideAreaSearchNode(), (mutations) => {
-            console.log("widget activateWideSearchObserver callback")
-            console.log("search mutations.length: ", mutations.length)
+          // console.log("widget activateWideSearchObserver callback")
+          // console.log("search mutations.length: ", mutations.length)
             for (const mutation of mutations) 
             {
                 if (
@@ -144,10 +144,10 @@ export default class WidgetBase
     activateTargetedObserver() 
     {
         this.targetCommonAncestorNode = this.targetCommonAncestorNode ?? document.querySelectorAll(this.targetCommonAncestorSelector); // set targetCommonAncestorNode if it is not already set
-        console.log("widget activateTargetedObserver")
+      // console.log("widget activateTargetedObserver")
         this.observers.targetedObserver = WidgetBase.createObserver(this.targetCommonAncestorNode, (mutations) => {
-            console.log("widget targetedObserver callback")
-            console.log("target mutations.length: ", mutations.length)
+          // console.log("widget targetedObserver callback")
+          // console.log("target mutations.length: ", mutations.length)
             for (const mutation of mutations)
             {
                 if ((mutation.type === 'childList' || mutation.type === 'subtree')
@@ -167,7 +167,7 @@ export default class WidgetBase
      */
     getTargetNodes(nodeList = this.getWideAreaSearchNode())
     {
-        console.log("widget targetNodeList")
+      // console.log("widget targetNodeList")
         if (this.targetNodeList && this.targetNodeList.length) // short circuit
         {
             return this.targetNodeList;
@@ -196,7 +196,7 @@ export default class WidgetBase
      */
     refreshTargetNodes(nodeList = this.getWideAreaSearchNode())
     {
-        console.log("widget refreshTargetNodes", nodeList)
+      // console.log("widget refreshTargetNodes", nodeList)
         const targetNodeList = this.findTargetNodes(nodeList);
         if (targetNodeList.length)
         {
@@ -214,7 +214,7 @@ export default class WidgetBase
      */
     findTargetNodes(nodeList = this.nodeToSearch)
     {
-        console.log("widget findTargetNodes", nodeList)
+      // console.log("widget findTargetNodes", nodeList)
         const _findTargetNodes = (node) => { // sub function for handling cases when a single node is passed in and when a nodeList is passed in
             // check if it's an element and if there are any sub elements that match our target selector
             if (node.nodeType === Node.ELEMENT_NODE && node.querySelectorAll(this.targetNodeSelector + WidgetBase.notCloneSelector).length)
@@ -291,7 +291,7 @@ export default class WidgetBase
                 WidgetBase.hideNode(node.nextSibling);// hide the clone
             }
         }
-        console.log("widget maskDown")
+      // console.log("widget maskDown")
         // make sure we have values to restore
         applyToSingleElemOrList(nodes, _unmask);
     }
