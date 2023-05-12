@@ -14,7 +14,7 @@ import WidgetBase from "../../WidgetBase.js";
  * The "amount owned" nodes will be trickier to compute- we may just blur this. Furthermore, it is only rendered conditionally- we will need to set up a listener.
  * 
  * We do not need to disable any buttons since this widget only links to the trade preview. */
-export default class PopOutTradesWidget extends WidgetBase 
+export default class TradePopOutWidget extends WidgetBase 
 {
     targetNodeSelector = "#eq-ticket__account-balance > div:nth-child(1) > div:nth-child(2)"; // non-margin buying power
     targetCommonAncestorSelector = "#eq-ticket__account-balance";
@@ -32,8 +32,10 @@ export default class PopOutTradesWidget extends WidgetBase
     popUpSelector = "float_trade_apps" // it's a custom element
     popUpNode = null;
 
-    submitButtonSelector = ".pvd3-button-root.pvd-button--full-width.pvd-button--primary:first-child"; // this retrieves two buttons; use only the first one.
-    submitButton = null; // reset to null when pop up removed.
+    previewOrderButtonSelector = ".pvd3-button-root.pvd-button--full-width.pvd-button--primary:first-child"; // this retrieves two buttons; use only the first one.
+    previewOrderButton = null; // reset to null when pop up removed.
+    placeOrderButtonSelector = "#placeOrderBtn";
+    placeOrderButton = null;
 
     errorSelector = ".pvd-inline-alert__content > s-slot > s-assigned-wrapper > div"
     errorCodes = {
@@ -58,6 +60,7 @@ export default class PopOutTradesWidget extends WidgetBase
             this.maskNonMargin();
             this.maskOwnedAmount();
             this.maskErrorMessage();
+            this.maskPlaceOrderButton();
         }
     }
 
@@ -97,7 +100,7 @@ export default class PopOutTradesWidget extends WidgetBase
 
     maskOwnedAmount()
     {
-        const ownedAmount = WidgetBase.getNodeFromList(this.getPopUpNode(), this.ownedAmountSelector);
+        const ownedAmount = WidgetBase.getNodes(this.getPopUpNode(), this.ownedAmountSelector);
         if (ownedAmount)
         {
           // console.log("ownedAmount", ownedAmount);
@@ -107,7 +110,7 @@ export default class PopOutTradesWidget extends WidgetBase
 
     maskErrorMessage()
     {
-        const errorDiv = WidgetBase.getNodeFromList(this.getPopUpNode(), this.errorSelector);
+        const errorDiv = WidgetBase.getNodes(this.getPopUpNode(), this.errorSelector);
         if (errorDiv)
         {
             const matches = errorDiv.innerText.match(/\((\d+)\)/);
@@ -126,7 +129,6 @@ export default class PopOutTradesWidget extends WidgetBase
         }
     }
 
-
     /**
      * @param {Node} errorDiv 
      */
@@ -140,6 +142,21 @@ export default class PopOutTradesWidget extends WidgetBase
         }
     }
 
+    maskPlaceOrderButton()
+    {
+        const placeOrderButton = this.getPlaceOrderButton();
+        if (placeOrderButton)
+        {
+            // handle original button by hiding it
+            WidgetBase.hideNode(placeOrderButton);
+            // reveal and disable clone.
+            const clone = WidgetBase.getClone(placeOrderButton) ?? this.makePlaceOrderClone(placeOrderButton);
+            WidgetBase.showNode(clone);
+
+            // placeOrderButton.classList.add(WidgetBase.blurClass);
+        }
+    }
+
     /******************** RESETTERS **********************/
 
     resetSecondaryEffects()
@@ -148,6 +165,7 @@ export default class PopOutTradesWidget extends WidgetBase
         this.resetWithoutMarginImpact();
         this.resetOwnedAmount();
         this.resetErrorMessage();
+        this.resetPlaceOrderButton();
     }
 
     resetWithoutMarginImpact()
@@ -162,7 +180,7 @@ export default class PopOutTradesWidget extends WidgetBase
 
     resetOwnedAmount()
     {
-        const ownedAmount = WidgetBase.getNodeFromList(this.getPopUpNode(), this.ownedAmountSelector);
+        const ownedAmount = WidgetBase.getNodes(this.getPopUpNode(), this.ownedAmountSelector);
         if (ownedAmount)
         {
             ownedAmount.classList.remove("money-mask-blurred"); // remove class "money-mask-blurred" from the owned amount
@@ -172,7 +190,7 @@ export default class PopOutTradesWidget extends WidgetBase
 
     resetErrorMessage()
     {
-        const errorDiv = WidgetBase.getNodeFromList(this.getPopUpNode(), this.errorSelector);
+        const errorDiv = WidgetBase.getNodes(this.getPopUpNode(), this.errorSelector);
         if (errorDiv)
         {
             const matches = errorDiv.innerText.match(/\((\d+)\)/);
@@ -197,13 +215,27 @@ export default class PopOutTradesWidget extends WidgetBase
         errorDiv.innerHTML = errorDiv.innerHTML.replace(regex, '$1 shares'); 
     }
 
+    resetPlaceOrderButton()
+    {
+        const placeOrderButton = this.getPlaceOrderButton();
+        if (placeOrderButton)
+        {
+            // restore placeOrderButton
+            placeOrderButton.disabled = false;
+            WidgetBase.showNode(placeOrderButton);
+            // hide clone.
+            const clone = WidgetBase.getClone(placeOrderButton) ?? this.makePlaceOrderClone(placeOrderButton);
+            WidgetBase.hideNode(clone);
+        }
+    }
+
     /******************** GETTERS **********************/
 
     getNonMargin()
     {
         if (!this.nonMargin || !this.nonMargin.isConnected)
         {
-            this.nonMargin = WidgetBase.getNodeFromList(this.getPopUpNode(), this.nonMarginSelector);
+            this.nonMargin = WidgetBase.getNodes(this.getPopUpNode(), this.nonMarginSelector);
         }
         return this.nonMargin;
     }
@@ -212,7 +244,7 @@ export default class PopOutTradesWidget extends WidgetBase
     {
         if (!this.withoutMarginImpact || !this.withoutMarginImpact.isConnected)
         {
-            this.withoutMarginImpact = WidgetBase.getNodeFromList(this.getPopUpNode(), this.withoutMarginImpactSelector);
+            this.withoutMarginImpact = WidgetBase.getNodes(this.getPopUpNode(), this.withoutMarginImpactSelector);
         }
         return this.withoutMarginImpact;
     }
@@ -225,6 +257,15 @@ export default class PopOutTradesWidget extends WidgetBase
     getPopUpNode()
     {
         return this.popUpNode; // it may return null, that is fine. we only want to set this in the pop up observer.
+    }
+
+    getPlaceOrderButton()
+    {
+        if (!this.placeOrderButton || !this.placeOrderButton.isConnected)
+        {
+            this.placeOrderButton = WidgetBase.getNodes(this.getPopUpNode(), this.placeOrderButtonSelector);
+        }
+        return this.placeOrderButton;
     }
 
     /******************** WATCHERS ************************/
@@ -241,7 +282,7 @@ export default class PopOutTradesWidget extends WidgetBase
                 {
                     if (!this.popUpNode // short-circuit if the pop up is already found
                         && mutation.addedNodes.length > 0
-                        && (this.popUpNode = WidgetBase.getNodeFromList(mutation.addedNodes, this.popUpSelector))) // check for the pop up in the added nodes and set if found
+                        && (this.popUpNode = WidgetBase.getNodes(mutation.addedNodes, this.popUpSelector))) // check for the pop up in the added nodes and set if found
                     {
                         this.watchForOwnedAmount(); // connect the owned amount observer if the pop up is added
                         this.watchForSubmit(); // watch for the submit button so we can add a click listener when found
@@ -249,10 +290,10 @@ export default class PopOutTradesWidget extends WidgetBase
                     }
                     else if (this.popUpNode 
                         && mutation.removedNodes.length > 0
-                        && WidgetBase.getNodeFromList(mutation.removedNodes, this.popUpSelector))
+                        && WidgetBase.getNodes(mutation.removedNodes, this.popUpSelector))
                     {
                         this.popUpNode = null;
-                        this.submitButton = null;
+                        this.previewOrderButton = null;
                         WidgetBase.tryDisconnect(this.observers.submitObserver);
                         WidgetBase.tryDisconnect(this.observers.errorMessageObserver)
                         WidgetBase.tryDisconnect(this.observers.ownedAmountObserver); // disconnect the owned amount observer if the pop up is removed. However, this pop up observer will remain active.
@@ -278,7 +319,7 @@ export default class PopOutTradesWidget extends WidgetBase
                 for (const mutation of mutations)
                 {
                     if ((mutation.type === 'childList' || mutation.type === 'subtree')
-                    && WidgetBase.getNodeFromList(mutation.addedNodes, this.ownedAmountSelector)) 
+                    && WidgetBase.getNodes(mutation.addedNodes, this.ownedAmountSelector)) 
                     {
                         this.maskOwnedAmount();
                         break; // break out of the mutations list if the owned amount is found
@@ -296,14 +337,14 @@ export default class PopOutTradesWidget extends WidgetBase
     watchForSubmit()
     {
         const _watchForSubmitCB = (mutations) => {
-            if (!this.submitButton) // short circuit if submit button is already set
+            if (!this.previewOrderButton) // short circuit if submit button is already set
             {
                 for (const mutation of mutations)
                 {
                     if ((mutation.type === 'childList' || mutation.type === 'subtree')
-                        && (this.submitButton = WidgetBase.getNodeFromList(mutation.addedNodes, this.submitButtonSelector))) // set submitButton if found in the added nodes
+                        && (this.previewOrderButton = WidgetBase.getNodes(mutation.addedNodes, this.previewOrderButtonSelector))) // set previewOrderButton if found in the added nodes
                     {
-                        this.handleSubmit(); // this will activate the error listener
+                        this.handlePreviewOrder(); // this will activate the error listener
                         this.handleExit(); // this will deactivate the error listener
                         break; // break out of the mutations list if the submit button is found
                     }
@@ -325,10 +366,11 @@ export default class PopOutTradesWidget extends WidgetBase
                 for (const mutation of mutations) 
                 {
                     if ((mutation.type === 'childList' || mutation.type === 'subtree' || mutation.attributeName === 'class') // once the errorDiv is created, only class changes will occur
-                    && WidgetBase.getNodeFromList(this.getPopUpNode(), this.errorSelector)) // set errorDiv if found in the added nodes
+                    && WidgetBase.getNodes(this.getPopUpNode(), this.errorSelector)) // set errorDiv if found in the added nodes
                     {
                         this.maskErrorMessage();
                         WidgetBase.tryDisconnect(this.observers.errorMessageObserver); // disconnect the error message observer if the error message is found.
+                        this.observers.errorMessageObserver = null;
                         break; // break out of the mutations list if found
                     }
                 };
@@ -339,14 +381,46 @@ export default class PopOutTradesWidget extends WidgetBase
         this.observers.errorMessageObserver = WidgetBase.createObserver(this.getPopUpNode(), _watchForErrorMessageCB, false, 1, observerConfig);
     }
 
+    watchForPlaceOrder()
+    {
+        const _watchForPlaceOrderCB = (mutations) => {
+            if (this.isMaskOn) // no need to run through all mutations if mask is down since we are only masking the place order button
+            {
+                for (const mutation of mutations)
+                {
+                    if ((mutation.type === 'childList' || mutation.type === 'subtree' && mutation.addedNodes.length)
+                    && this.getPlaceOrderButton()) // set placeOrderButton if found in the added nodes
+                    {
+                        this.maskPlaceOrderButton();
+                        WidgetBase.tryDisconnect(this.observers.placeOrderObserver); // disconnect the place order observer once the place order button is found.
+                        this.observers.placeOrderObserver = null;
+                        break; // break out of the mutations list if found
+                    }
+                };
+            }
+        }
+        this.observers.placeOrderObserver = WidgetBase.createObserver(this.getPopUpNode(), _watchForPlaceOrderCB);
+    }
+
     /******************** OTHERS ************************/
 
 
-    handleSubmit()
+    /**
+     * instantiate the error listener and also the "place order" listener
+     */
+    handlePreviewOrder()
     {
-        this.submitButton = this.submitButton ?? this.getPopUpNode().querySelector(this.submitButtonSelector);
-        this.submitButton.addEventListener('click', () => {
-            this.watchForErrorMessage();
+        this.previewOrderButton = this.previewOrderButton ?? this.getPopUpNode().querySelector(this.previewOrderButtonSelector);
+        this.previewOrderButton.addEventListener('click', () => {
+            if (!this.observers.errorMessageObserver)
+            {
+                this.watchForErrorMessage();
+            }
+            if (!this.observers.placeOrderObserver)
+            {
+                this.watchForPlaceOrder();
+            }
+            this.previewOrderButton = null; // reset previewOrderButton
         });
     }
 
@@ -359,5 +433,18 @@ export default class PopOutTradesWidget extends WidgetBase
         exitButton.addEventListener('click', () => {
             WidgetBase.tryDisconnect(this.observers.errorMessageObserver);
         });
+    }
+
+    /**
+     * The place holder button gets a specific clone that is disabled and has a different text
+     */
+    makePlaceOrderClone(placeOrderButton)
+    {
+        WidgetBase.makeClones(placeOrderButton);
+        const clone = WidgetBase.getClone(placeOrderButton);
+        clone.disabled = true;
+        clone.childNodes[0].style.fontStyle = "italic";
+        clone.childNodes[0].textContent = "Unmask to place order";
+        return clone;
     }
 }
