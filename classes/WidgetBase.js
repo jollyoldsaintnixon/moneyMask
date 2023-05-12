@@ -7,12 +7,14 @@ import {
 
 export default class WidgetBase 
 {
-    static observerConfig = {
+    static cloneClass = 'money-mask-clone';
+    static notCloneSelector = ':not(.money-mask-clone)';
+    static blurClass = 'money-mask-blurred';
+    static observerConfig = { // default observer config
         childList: true,
         subtree: true,
     }
-    static cloneClass = 'money-mask-clone';
-    static notCloneSelector = ':not(.money-mask-clone)';
+
 
     maskValue = 100;
     isMaskOn = false;
@@ -87,7 +89,7 @@ export default class WidgetBase
     {
         for (const key in this.observers)
         {
-            if (obj.hasOwnProperty(key))
+            if (this.observers.hasOwnProperty(key))
             {
                 const observer = this.observers[key];
                 if (observer) // make sure it is not set to null
@@ -305,9 +307,11 @@ export default class WidgetBase
      * @param {NodeList|Node} nodes 
      * @param {Function} observerCallBack 
      * @param {boolean} watchAncestor whether to watch the parent node or the node itself
+     * @param {number} watchAncestorDepth how many levels up the tree to watch
+     * @param {object} observerConfig defaults to WidgetBase.observerConfig
      * @returns 
      */
-    static createObserver(nodes, observerCallBack, watchAncestor = false, watchAncestorDepth = 5)
+    static createObserver(nodes, observerCallBack, watchAncestor = false, watchAncestorDepth = 5, observerConfig = WidgetBase.observerConfig)
     {
         const observer = new MutationObserver(observerCallBack);
         const _watchNode = (node, observer) => { // subfunction to call on each node in nodes
@@ -318,7 +322,7 @@ export default class WidgetBase
                     node = node.parentElement;
                 }
             }
-            observer.observe(node, WidgetBase.observerConfig);
+            observer.observe(node, observerConfig);
         }
         // console.log("base createObserver")    
         applyToSingleElemOrList(nodes, _watchNode, observer);
@@ -392,5 +396,35 @@ export default class WidgetBase
             }
         }
         // do nothing if it is not hidden
+    }
+
+    static tryDisconnect(observer)
+    {
+        if (observer instanceof MutationObserver)
+        {
+            observer.disconnect();
+        }
+    }
+
+    /**
+     * Return a node found within a node list. If selectAll is true, return a list of nodes.
+     * @param {NodeList|Node|null} nodes 
+     * @param {string} selector 
+     * @param {boolean} selectAll whether to select all nodes that match the selector or just the first
+     * @returns {Node|NodeList|null}
+     */
+    static getNodeFromList(nodes, selector, selectAll = false)
+    {
+        let needleNode = null;
+        const _getNodeFromList = (node) => {
+            if ((!needleNode // if we found what we are looking for, do nothing
+                || (typeof needleNode[Symbol.iterator] === 'function' && !needleNode.length)) // case it is an empty list
+                && node.nodeType === Node.ELEMENT_NODE)
+            {
+                needleNode = selectAll ? node.querySelectorAll(selector) : node.querySelector(selector);
+            }
+        }
+        applyToSingleElemOrList(nodes, _getNodeFromList); // should set needleNode
+        return needleNode;
     }
 }
