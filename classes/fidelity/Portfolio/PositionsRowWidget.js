@@ -1,11 +1,11 @@
-import OnlySecondaryWidgetBase from "../OnlySecondaryWidgetBase";
-import WidgetBase from "../WidgetBase";
+import OnlySecondaryWidgetBase from "../../OnlySecondaryWidgetBase";
+import WidgetBase from "../../WidgetBase";
 import { 
     dollarsToFloat,
     stripToNumber, 
     toDollars,
     toGainDollars,
-} from "../helpers";
+} from "../../helpers";
 
 /**
  * This class represents rows of securities found under the positions tab within the portfolio page.

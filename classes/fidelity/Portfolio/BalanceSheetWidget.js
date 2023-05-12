@@ -1,12 +1,12 @@
-import WidgetBase from "../WidgetBase";
+import WidgetBase from "../../WidgetBase";
 
 /**
  * This class represents the account balance tab within the portfolio
  */
-export default class BalanceSheet extends WidgetBase
+export default class BalanceSheetWidget extends WidgetBase
 {
     targetNodeSelector = '.balances--table-content:not(.balances--group-mode-total-border) > td:nth-child(2) > span:first-child';
-    targetCommonAncestorSelector = '';
+    targetCommonAncestorSelector = '.balances--table-container';
     /****** Widget Specific *****/
     accountGainSelector = '.balances--table-content:not(.balances--group-mode-total-border) > td:nth-child(3) > span:first-child';
     accountGain
@@ -32,6 +32,17 @@ export default class BalanceSheet extends WidgetBase
     {
         
     }
+
+    maskPortfolioTotal()
+    {
+
+    }
+
+    maskPortfolioGain()
+    {
+
+    }
+    
     /************************ RESETTERS ***********************/
     resetSecondaryEffects()
     {

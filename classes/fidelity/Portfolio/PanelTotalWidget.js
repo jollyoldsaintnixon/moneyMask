@@ -3,9 +3,9 @@ import {
     toGraphDollars,
     toGainDollars,
     arrayToList
-} from "../helpers";
-import OnlySecondaryWidgetBase from "../OnlySecondaryWidgetBase";
-import WidgetBase from "../WidgetBase";
+} from "../../helpers";
+import OnlySecondaryWidgetBase from "../../OnlySecondaryWidgetBase";
+import WidgetBase from "../../WidgetBase";
 
 /**
  * This class targets a particular "square" in the summary panel that shows 
@@ -177,15 +177,6 @@ export default class PanelTotalWidget extends OnlySecondaryWidgetBase
     {
         this.portfolioNode = this.portfolioNode ?? this.getTargetNodes(this.getCommonAncestorNode())[0];
         return this.portfolioNode;
-    }
-
-    getCommonAncestorNode()
-    {
-        if (!this.targetCommonAncestorNode)
-        {
-            this.targetCommonAncestorNode = document.querySelector(this.targetCommonAncestorSelector);
-        }
-        return this.targetCommonAncestorNode;
     }
 
     getPercentNode()

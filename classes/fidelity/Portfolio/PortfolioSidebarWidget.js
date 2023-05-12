@@ -1,10 +1,10 @@
 import { 
     toDollars, 
     toGainDollars
-} from "../helpers";
-import WidgetBase from "../WidgetBase";
+} from "../../helpers";
+import WidgetBase from "../../WidgetBase";
 
-export default class SummarySidebarWidget extends WidgetBase 
+export default class PortfolioSidebarWidget extends WidgetBase 
 {
     targetNodeSelector = '[class$="_acct-balance"] > span:nth-child(2)';
     targetCommonAncestorSelector = '.acct-selector__container';
@@ -74,7 +74,7 @@ export default class SummarySidebarWidget extends WidgetBase
     maskGainNodeValue(targetNode)
     {
       // console.log("summaryWidget maskGainNodeValue", targetNode)
-        const gainNode = SummarySidebarWidget.getGainNode(targetNode);
+        const gainNode = PortfolioSidebarWidget.getGainNode(targetNode);
         // ensure that there is a gain node for this account
         if (!gainNode) return;
         const proportion = this.getMaskedProportion(targetNode.textContent, gainNode.textContent);
@@ -110,7 +110,7 @@ export default class SummarySidebarWidget extends WidgetBase
     resetGainNodeValue(node)
     {
       // console.log("summaryWidget resetGainNodeValue", node)
-        const gainNode = SummarySidebarWidget.getGainNode(node);
+        const gainNode = PortfolioSidebarWidget.getGainNode(node);
         if (!gainNode) return;
         WidgetBase.unmask(gainNode);
     }
