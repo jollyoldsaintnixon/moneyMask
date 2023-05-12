@@ -1,3 +1,6 @@
-import FIDELITY_WIDGET_MAP from "../classes/UrlsToWidgetsMaps/FidelityUrlsToWidgetsMap.js";
+import {
+    classToUrlMap,
+    classConstructorMap,
+} from "../classes/UrlsToWidgetsMaps/FidelityUrlsToWidgetsMap.js";
 import ContentScript from "../classes/ContentScript.js";
-(new ContentScript(FIDELITY_WIDGET_MAP)).init();
+(new ContentScript(classToUrlMap, classConstructorMap)).init();

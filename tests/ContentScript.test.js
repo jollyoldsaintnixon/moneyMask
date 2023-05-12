@@ -1,6 +1,9 @@
 import ContentScript from "../classes/ContentScript";
 import WidgetController from "../classes/WidgetController";
-import urlsToWidgetsMapMock from "./__mocks__/UrlsToWidgetsMap";
+import {
+    classConstructorMapMock,
+    classToUrlMapMock,
+} from "./__mocks__/UrlsToWidgetsMap";
 import chromeMock from './__mocks__/chrome';
 global.chrome = chromeMock;
 
@@ -10,13 +13,14 @@ describe('ContentScript', () => {
         chrome.runtime.connect.mockClear();
     }) 
     test('should instantiate with a passed-in widget map', () => {
-        const contentScript = new ContentScript(urlsToWidgetsMapMock);
-        expect(contentScript.WIDGET_MAP).toEqual(urlsToWidgetsMapMock);
-        expect(contentScript.WIDGET_MAP).not.toEqual({});
+        const contentScript = new ContentScript(classConstructorMapMock, classToUrlMapMock);
+        expect(contentScript.classToUrlMap).toEqual(classToUrlMapMock);
+        expect(contentScript.classConstructorMap).toEqual(classConstructorMapMock);
+        expect(contentScript.classToUrlMapMock).not.toEqual({});
     });
     test('should instantiate with an empty object as a default widget map when none is passed in', () => {
         const contentScript = new ContentScript();
-        expect(contentScript.WIDGET_MAP).toEqual({});
+        expect(contentScript.classToUrlMapMock).toEqual({});
     });
     test('should establish a connection with the background script when this.init() is called', async () => {
         // set up contentScript

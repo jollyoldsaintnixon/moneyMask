@@ -1,4 +1,9 @@
-export default {
-    "http[s]?:\/\/.+fidelity\.com\/.*portfolio\/(positions|summary)": [1, 2, 3],
-    'https://www.google.com/': [4, 5, 6],
+export const classToUrlMapMock = {
+    'ClassA': "http[s]?:\/\/.+fidelity\.com\/.*portfolio\/(positions|summary)",
+    'ClassB': 'https://www.google.com/',
 };
+
+export const classConstructorMapMock = {  
+    'ClassA': jest.fn(),
+    'ClassB': jest.fn(),
+}

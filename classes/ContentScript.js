@@ -3,15 +3,16 @@ import { bindHandlers } from "./helpers.js";
 
 export default class ContentScript
 {
-    WIDGET_MAP; // regex path => arrays of widget class names
+    classConstructorMap; // regex path => arrays of widget class names
     backgroundScriptPort; // connection to backgroundScript
     controller; // widget controller
 
-    constructor(WIDGET_MAP = {})
+    constructor(classConstructorMap = {}, classToUrlMap = {})
     {
       // console.log("ContentScript constructor")
         bindHandlers(this);
-        this.WIDGET_MAP = WIDGET_MAP;
+        this.classConstructorMap = classConstructorMap;
+        this.classToUrlMap = classToUrlMap;
     }
 
     init()
@@ -79,7 +80,7 @@ export default class ContentScript
     setUpController(maskValue, isMaskOn)
     {
       // console.log('in the contentscript setUpController', maskValue, isMaskOn);
-        this.controller = new WidgetController(maskValue, isMaskOn, this.WIDGET_MAP);
+        this.controller = new WidgetController(maskValue, isMaskOn, this.classConstructorMap, this.classToUrlMap);
         this.controller.loadWidgets(window.location.href);
     }
 
