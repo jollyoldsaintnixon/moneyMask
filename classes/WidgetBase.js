@@ -299,6 +299,30 @@ export default class WidgetBase
     }
 
     /**
+     * Call unmask on all nodes in the tree.
+     * @param {NodeList|Node} nodes 
+     */
+    static unmaskTree(nodes)
+    {
+        const _unmaskTree = (node) => {
+            if (!node || node.nodeType !== Node.ELEMENT_NODE) 
+            {
+                return; // only care about element nodes
+            }
+            WidgetBase.unmask(node); // unmask this node
+            for (const child of node.childNodes)
+            {
+                if (child.classList && child.classList.contains(WidgetBase.cloneClass)) // skip clones
+                {
+                    continue;
+                }
+                _unmaskTree(child); // recurse on down
+            }
+        }
+        applyToSingleElemOrList(nodes, _unmaskTree);
+    }
+
+    /**
      * Create an observer over each node in the node list.
      * Set "watchAncestor" to true if you want to watch an ancestor node instead of the node itself.
      * Watching the ancestor allows for the callback to be triggered when the target node is removed
@@ -359,6 +383,22 @@ export default class WidgetBase
     }
 
     /**
+     * Get the clone of the node. Returns null if none found.
+     * @param {Node} node
+     * @returns {Node|null} the clone of the node 
+     */
+    static getClone(node)
+    {
+        let clone = null;
+        const sibling = node.nextSibling;
+        if (sibling && sibling.classList.contains(WidgetBase.cloneClass))
+        {
+            clone = sibling;
+        }
+        return clone;
+    }
+
+    /**
      * Hide the node by memoizing the original display value in the dataset and then 
      * setting the display to none. We do this way instead of adding a class because some 
      * pre-existing CSS selectors may override our class.
@@ -408,23 +448,23 @@ export default class WidgetBase
 
     /**
      * Return a node found within a node list. If selectAll is true, return a list of nodes.
-     * @param {NodeList|Node|null} nodes 
+     * @param {NodeList|Node|null} nodes to search under. can be single node.
      * @param {string} selector 
      * @param {boolean} selectAll whether to select all nodes that match the selector or just the first
      * @returns {Node|NodeList|null}
      */
-    static getNodeFromList(nodes, selector, selectAll = false)
+    static getNodes(nodes, selector, selectAll = false)
     {
         let needleNode = null;
-        const _getNodeFromList = (node) => {
+        const _getNodes = (node) => {
             if ((!needleNode // if we found what we are looking for, do nothing
                 || (typeof needleNode[Symbol.iterator] === 'function' && !needleNode.length)) // case it is an empty list
-                && node.nodeType === Node.ELEMENT_NODE)
+                && (node.nodeType === Node.ELEMENT_NODE || node.nodeType === Node.DOCUMENT_NODE))
             {
                 needleNode = selectAll ? node.querySelectorAll(selector) : node.querySelector(selector);
             }
         }
-        applyToSingleElemOrList(nodes, _getNodeFromList); // should set needleNode
+        applyToSingleElemOrList(nodes, _getNodes); // should set needleNode
         return needleNode;
     }
 }

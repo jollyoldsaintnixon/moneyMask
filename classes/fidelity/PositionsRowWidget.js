@@ -1,6 +1,7 @@
 import OnlySecondaryWidgetBase from "../OnlySecondaryWidgetBase";
 import WidgetBase from "../WidgetBase";
 import { 
+    dollarsToFloat,
     stripToNumber, 
     toDollars,
     toGainDollars,
@@ -35,21 +36,24 @@ export default class PositionsRowWidget extends OnlySecondaryWidgetBase
 
     maskSecondaryEffects()
     {
+        let grandTotalMaskValue = 0; // reset it each loop
         for (const securityNode of this.getTargetNodes())
         {
             // the first two are each based on a different percent and are masked the same for both account total and security rows
             this.maskTotalGainLoss(securityNode);
             this.maskTodaysGainLoss(securityNode);
-            // determin if account total row or normal security row
-            if (this.isAccountTotalRow(securityNode))
+            // determine if account total row or normal security row
+            if (this.isAccountTotalRow(securityNode)) // we also want the very last node to be masked as an account total row
             {
                 this.maskAccountTotalRow(securityNode);
+                grandTotalMaskValue += dollarsToFloat(this.maskValue);
             } 
             else
             {
                 this.maskSecurityRow(securityNode);
             } 
         }
+        this.maskGrandTotalRow(grandTotalMaskValue);
     }
 
     maskTotalGainLoss(securityNode)
@@ -74,7 +78,11 @@ export default class PositionsRowWidget extends OnlySecondaryWidgetBase
 
     maskAccountTotalRow(securityNode)
     {
-        securityNode.querySelector(this.currentValueSelector).textContent = toDollars(this.maskValue);
+        const currentValueNode = securityNode.querySelector(this.currentValueSelector);
+        if (currentValueNode && currentValueNode.textContent)
+        {
+            WidgetBase.maskUp(securityNode.querySelector(this.currentValueSelector), toDollars(this.maskValue));
+        }
     }
 
     maskSecurityRow(securityNode)
@@ -127,23 +135,36 @@ export default class PositionsRowWidget extends OnlySecondaryWidgetBase
         WidgetBase.maskUp(node, maskedValue);
     }
 
+    /**
+     * All we have to mask here is the grand total's current value. The rest is handled in the general security row masking.
+     * The grandTotalMaskValue is recalculated each time maskSecondaryEffects is called. It is essentially the number of accounts * maskValue.
+     * @param {int|float} grandTotalMaskValue 
+     */
+    maskGrandTotalRow(grandTotalMaskValue)
+    {
+        WidgetBase.maskUp(this.getGrandTotalCurrentValue(), toDollars(grandTotalMaskValue));
+    }
+
     /******************** RESETTERS **********************/
 
 
     resetSecondaryEffects()
     {
-        for (const securityNode of this.getTargetNodes())
-        {
-            WidgetBase.unmask(securityNode.querySelector(this.totalGainLossSelector));
-            WidgetBase.unmask(securityNode.querySelector(this.todaysGainLossSelector));
-            WidgetBase.unmask(securityNode.querySelector(this.currentValueSelector));
-            WidgetBase.unmask(securityNode.querySelector(this.quantitySelector));
-            WidgetBase.unmask(securityNode.querySelector(this.costBasisTotalSelector));
-        }
+        WidgetBase.unmaskTree(this.getTargetNodes());
     }
 
     /******************** GETTERS **********************/
-    
+
+    getGrandTotalCurrentValue()
+    {
+        let currentValueNode = null;  
+        const grandTotalRow = this.getTargetNodes()[this.getTargetNodes().length - 1];
+        if (grandTotalRow)
+        {
+            currentValueNode = grandTotalRow.querySelector(this.currentValueSelector);
+        }
+        return currentValueNode;
+    }
     /******************** OTHERS **********************/
 
     /**
