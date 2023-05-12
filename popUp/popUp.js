@@ -56,7 +56,7 @@ document.addEventListener('DOMContentLoaded', function() {
         function appendOptions() {
             // Create options and append them to the "select" element
             const optionsData = [
-                { value: '0', text: 'Blurred' },
+                // { value: '0', text: 'Blurred' },
                 { value: '1', text: '$1' },
                 { value: '100', text: '$100' },
                 { value: '1000', text: '$1,000' },
