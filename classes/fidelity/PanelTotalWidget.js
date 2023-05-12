@@ -11,6 +11,7 @@ import WidgetBase from "../WidgetBase";
  * This class targets a particular "square" in the summary panel that shows 
  * the total value of all accounts. It is a secondary widget because changes
  * are determined by changes in a node outside of its scope.
+ * TODO: I need to add a listener that updates the graph labels whenever one of the four graphs is first clicked. They do not load until clicked the first time, and there is a delay.
  */
 export default class PanelTotalWidget extends OnlySecondaryWidgetBase 
 {
@@ -122,7 +123,13 @@ export default class PanelTotalWidget extends OnlySecondaryWidgetBase
         const commonAncestor = this.getCommonAncestorNode();
         if (commonAncestor)
         {
-            commonAncestor.addEventListener('click', this.maskPortfolioTotalGainNode);
+            commonAncestor.addEventListener('click', () => {
+                if (this.isMaskOn)
+                {
+                    this.maskPortfolioTotalGainNode();
+                    this.maskGraphLabels();
+                }
+            });
         }
     }
 
@@ -132,7 +139,8 @@ export default class PanelTotalWidget extends OnlySecondaryWidgetBase
           // console.log('summaryBodyTotalWidget watchForHighCharts callback');
             for (const mutation of mutations)
             {
-                if (this.getGraphNode())
+                if ((mutation.addedNodes.length && mutation.type === 'childList' || mutation.type === 'subtree')
+                    && this.getGraphNode(mutation.addedNodes))
                 {
                     if (this.isMaskOn)
                     {
@@ -152,7 +160,13 @@ export default class PanelTotalWidget extends OnlySecondaryWidgetBase
      */
     initHighChartsListener()
     {
-        this.getGraphNode().addEventListener('mouseleave', this.maskPortfolioTotalGainNode); // triggers when leaving 
+        this.getGraphNode().addEventListener('mouseleave', () => {
+            if (this.isMaskOn)
+            {
+                this.maskPortfolioTotalGainNode(); // triggers when leaving 
+                this.maskGraphLabels();
+            }
+        });
     }
 
     /**
@@ -247,17 +261,18 @@ export default class PanelTotalWidget extends OnlySecondaryWidgetBase
      * The gain node is the node with the daily gain/loss value.
      * Memoize it since it should remain in place once added.
      * 
-     * @param {Node} starterNode 
      * @returns Node|null
      */
-    getGainNode(starterNode)
+    getGainNode()
     {
+        // const commonAncestor = this.getCommonAncestorNode();
       // console.log('summaryBodyTotalWidget getGainNode', starterNode);
         // if (this.gainNode) return this.gainNode; // short circuit if already found
         let gainNode = null;
         try
         {
-            gainNode = starterNode.parentElement.nextElementSibling.childNodes[1];
+            // gainNode = starterNode.parentElement.nextElementSibling.childNodes[1];
+            gainNode = this.getCommonAncestorNode().querySelector(this.gainNodeSelector);
         }
         catch (error)
         {
@@ -266,9 +281,18 @@ export default class PanelTotalWidget extends OnlySecondaryWidgetBase
         return gainNode;
     }
 
-    getGraphNode()
+    /**
+     * 
+     * @param {NodeList|Node} nodes defaul;ts to document
+     * @returns 
+     */
+    getGraphNode(nodes = document)
     {
-        this.graphNode = this.graphNode ?? document.querySelector(this.graphSelector);
+        // this.graphNode = this.graphNode ?? document.querySelector(this.graphSelector);
+        if (!this.graphNode || !this.graphNode.isConnected)
+        {
+            this.graphNode = WidgetBase.getNodes(nodes, this.graphSelector);
+        }
         return this.graphNode;
     }
 
@@ -299,5 +323,34 @@ export default class PanelTotalWidget extends OnlySecondaryWidgetBase
                 WidgetBase.unmask(node);
             }
         }
+    }
+
+    /**
+     *  Overwritten from parent since we don't want to trigger a maskUpOrDownSwitch whenever we scroll over Watches over only the set of nodes that are relevant to the widget.
+     */
+    activateTargetedObserver() 
+    {
+        this.targetCommonAncestorNode = this.targetCommonAncestorNode ?? document.querySelectorAll(this.targetCommonAncestorSelector); // set targetCommonAncestorNode if it is not already set
+        // console.log("widget activateTargetedObserver")
+        this.observers.targetedObserver = WidgetBase.createObserver(this.targetCommonAncestorNode, (mutations) => {
+            // console.log("widget targetedObserver callback")
+            // console.log("target mutations.length: ", mutations.length)
+            for (const mutation of mutations)
+            {
+                if ((mutation.type === 'childList' || mutation.type === 'subtree')
+                    && !this.graphScrollMutation() // ! this is the change from the parent
+                    && this.refreshTargetNodes(this.targetCommonAncestorNode).length) // this.targetNodeList will be set here
+                {
+                    this.maskUpOrDownSwitch();
+                    break; // break out of the loop for efficiency
+                }
+            }
+        });
+    }
+
+    graphScrollMutation()
+    {
+        const graphNode = this.getGraphNode(this.getCommonAncestorNode());
+        return (graphNode && graphNode.matches(":hover"));
     }
 }
