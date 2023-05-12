@@ -6,23 +6,24 @@
 export default class WidgetController
 {
     currentWidgets = {}; // widgetClass name => widget instance
-    WIDGET_MAP = {}; // regex path => arrays of widget class names
+    classToUrlMap = {}; // regex path => arrays of widget class names
+    classConstructorMap = {}; // regex path => arrays of widget class names
     widgetSearcher;
     maskValue;
     isMaskOn;
 
-    constructor(maskValue, isMaskOn, WIDGET_MAP = {})
+    constructor(maskValue, isMaskOn, classToUrlMap = {}, classConstructorMap = {})
     {
       // console.log('in the controller constructor');
         this.maskValue = maskValue;
         this.isMaskOn = isMaskOn;
-        this.WIDGET_MAP = WIDGET_MAP;
+        this.classToUrlMap = classToUrlMap;
+        this.classConstructorMap = classConstructorMap;
     }
 
     /**
-     * Tests the regex keys of WIDGET_MAP for a match with the input url. Then
-     * instantiates the widgets that are active under that url. If the url does not
-     * match, then all widgets are deactivated.
+     * Tests the regex values of classToUrlMap for a match with the input url. If there is a match, then the key for that regex is used to look up the corresponding class constructor in classConstructorMap. 
+     * If the url does not match, then all widgets are deactivated.
      * 
      * @param {string} url 
      */
@@ -30,20 +31,21 @@ export default class WidgetController
     {
       // console.log("loading widgets for url: ", url)
         let matchingUrlFound = false;
-        for (const regex in this.WIDGET_MAP) 
+        let upcomingWidgets = [];
+        for (const className in this.classToUrlMap) // run through all classes in the classToUrlMap
         {
-            if ((new RegExp(regex)).test(url))
+            const regex = this.classToUrlMap[className];
+            if (regex.test(url))
             {
                 matchingUrlFound = true;
-                const upcomingWidgets = this.WIDGET_MAP[regex];
-                this.deactivateWidgets(upcomingWidgets);
-                this.activateWidgets(upcomingWidgets);
-                break;
+                upcomingWidgets.push(this.classConstructorMap[className]); // push in the appropriate constructor by looking up the class obj from the class name in classConstructorMap (NB this avoids the use of eval)
             }
         }
-        if (!matchingUrlFound)
+        // if any upcoming widgets found, deactivate from the current widgets those not found in the upcoming widgets, then activate the new upcoming widgets.
+        if (upcomingWidgets.length)
         {
-            this.deactivateWidgets([]);
+            this.deactivateWidgets(upcomingWidgets);
+            this.activateWidgets(upcomingWidgets);
         }
     }
 
@@ -97,7 +99,7 @@ export default class WidgetController
     }
 
     /**
-     * Pass in an array of class names (from the WIDGET_MAP). Activates each with current maskValue.
+     * Pass in an array of class names (from the classToUrlMap). Activates each with current maskValue.
      * 
      * @param {array} widgetClassArr 
      */
