@@ -145,7 +145,7 @@ export default class WidgetBase
      */
     activateTargetedObserver() 
     {
-        this.targetCommonAncestorNode = this.targetCommonAncestorNode ?? document.querySelectorAll(this.targetCommonAncestorSelector); // set targetCommonAncestorNode if it is not already set
+        this.targetCommonAncestorNode = this.targetCommonAncestorNode ?? this.getCommonAncestorNode(); // set targetCommonAncestorNode if it is not already set
       // console.log("widget activateTargetedObserver")
         this.observers.targetedObserver = WidgetBase.createObserver(this.targetCommonAncestorNode, (mutations) => {
           // console.log("widget targetedObserver callback")
@@ -176,6 +176,18 @@ export default class WidgetBase
         }
         this.targetNodeList = this.findTargetNodes(nodeList);
         return this.targetNodeList;
+    }    
+    
+    /**
+     * @returns {Node} common ancestor of the target nodes
+     */
+    getCommonAncestorNode()
+    {
+        if (!this.targetCommonAncestorNode)
+        {
+            this.targetCommonAncestorNode = document.querySelector(this.targetCommonAncestorSelector);
+        }
+        return this.targetCommonAncestorNode;
     }
 
     /**

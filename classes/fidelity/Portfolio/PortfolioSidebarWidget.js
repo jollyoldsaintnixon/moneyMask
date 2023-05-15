@@ -1,6 +1,6 @@
 import { 
     toDollars, 
-    toGainDollars
+    toGainDollars,
 } from "../../helpers";
 import WidgetBase from "../../WidgetBase";
 
