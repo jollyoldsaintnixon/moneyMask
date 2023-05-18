@@ -31,6 +31,7 @@ export default class PortfolioSidebarWidget extends WidgetBase
      */
     putMaskUp()
     {
+        if (!this.getAccountTotalNodes().length) return; // short-circuit if nodes not found
         this.maskAccountTotals();
         for (const accountTotalNode of this.getAccountTotalNodes())
         {
@@ -109,6 +110,7 @@ export default class PortfolioSidebarWidget extends WidgetBase
 
     resetNodes()
     {
+        if (!this.getAccountTotalNodes().length) return;
         this.resetAccountTotals();
         for (const accountTotalNode of this.getAccountTotalNodes())
         {
