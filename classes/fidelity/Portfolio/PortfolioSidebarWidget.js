@@ -1,4 +1,5 @@
 import { 
+    arrayToList,
     toDollars, 
     toGainDollars,
 } from "../../helpers";
@@ -6,42 +7,55 @@ import WidgetBase from "../../WidgetBase";
 
 export default class PortfolioSidebarWidget extends WidgetBase 
 {
-    targetNodeSelector = '[class$="_acct-balance"] > span:nth-child(2)';
-    targetCommonAncestorSelector = '.acct-selector__container';
-    accountsTotalSelector = '.acct-selector__all-accounts > div:nth-child(2) > span:nth-child(2)';
-    accountsTotal = null; // node that has the total of totals. I memoize it since it is a single node and easy to track.
-    groupTotalNodesSelector = '.acct-selector__group-balance'; // each "group" of accounts (ie retirement, custodial, etc) has a total
+    commonAncestorSelector = '.acct-selector__container';
+    accountTotalsSelector = '[class$="_acct-balance"] > span:nth-child(2)';
+    accountTotalNodes = arrayToList([]);
 
+    portfolioTotalSelector = '.acct-selector__all-accounts > div:nth-child(2) > span:nth-child(2)';
+    portfolioTotalNode = null; // node that has the total of totals. I memoize it since it is a single node and easy to track.
+    groupTotalSelector = '.acct-selector__group-balance'; // each "group" of accounts (ie retirement, custodial, etc) has a total
+    groupTotalNodes = arrayToList([]);
+
+    constructor(maskValue = 100, isMaskOn = false) 
+    {
+        super(maskValue, isMaskOn);
+        this.watchForCommonAncestor();
+    }
     /************************ MASKERS ***********************/
 
     /**
-     * Updates the "gain" node for each account (the gain/loss for the day).
-     * Updates the sum value of all accounts.
-     * ? is this ever called when the mask is down? if not, we can calculate the total much more easily.
+     * Converts the totals of each account total to the mask value.
+     * Masks the "gain" node for each account (the gain/loss for the day).
+     * Masks the group totals (ie retirement, custodial, etc).
+     * Masks the sum value of all accounts (portfolio total).
      */
-    maskSecondaryEffects()
+    putMaskUp()
     {
-      // console.log('summaryWidget maskSecondaryEffects')
-        for (const node of this.targetNodeList)
+        this.maskAccountTotals();
+        for (const accountTotalNode of this.getAccountTotalNodes())
         {
-            this.maskGainNodeValue(node);
+            this.maskGains(accountTotalNode);
         }
-        // mask total for all accounts
-        this.maskAccountsTotalValue();
-        // mask group total for all accounts
-        this.maskGroupTotalValues();
+        this.maskGroupTotals();
+        this.maskPortfolioTotal();
     }
 
     /**
-     * We work backwards with the group totals- we query all that have the matching class, and then
-     * we determine how many targetNodes are in each group.
+     * Sets the value of the account total to be the mask value
      */
-    maskGroupTotalValues()
+    maskAccountTotals()
     {
-      // console.log("summaryWidget maskGroupTotalValues");
+        WidgetBase.maskUp(this.getAccountTotalNodes(), toDollars(this.maskValue));
+    }
+
+    /**
+     * Sets the value of the group total to be the mask value times how many accounts are in the group
+     */
+    maskGroupTotals()
+    {
         const groupTotalNodes = this.getGroupTotalNodes();
         // subfunction to get common ancestor of targetNode and groupTotalNode
-        const getCommonGroupAncestor = (node) =>
+        const _getCommonGroupAncestor = (node) =>
         {
             let ancestor = node;
             for (let i=0; i<10; i++)
@@ -52,16 +66,15 @@ export default class PortfolioSidebarWidget extends WidgetBase
                 }
                 ancestor = ancestor.parentElement;
             }
-          // console.log("ancestor:", ancestor);
             return ancestor;
         }
         // loop through each group total node
         for (const groupTotalNode of groupTotalNodes)
         {
-            const commonGroupAncestor = getCommonGroupAncestor(groupTotalNode);
+            const commonGroupAncestor = _getCommonGroupAncestor(groupTotalNode);
             if (commonGroupAncestor)
             {
-                const groupTotal = commonGroupAncestor.querySelectorAll(this.targetNodeSelector).length * this.maskValue;
+                const groupTotal = WidgetBase.getNodes(commonGroupAncestor, this.accountTotalsSelector, true).length * this.maskValue;
                 WidgetBase.maskUp(groupTotalNode, toDollars(groupTotal));
             }
         }
@@ -69,15 +82,14 @@ export default class PortfolioSidebarWidget extends WidgetBase
 
     /**
      * Update the gain/loss value for each account.
-     * @param {Node} targetNode 
+     * @param {Node} accountTotalNode 
      */
-    maskGainNodeValue(targetNode)
+    maskGains(accountTotalNode)
     {
-      // console.log("summaryWidget maskGainNodeValue", targetNode)
-        const gainNode = PortfolioSidebarWidget.getGainNode(targetNode);
+        const gainNode = PortfolioSidebarWidget.getGainNode(accountTotalNode);
         // ensure that there is a gain node for this account
         if (!gainNode) return;
-        const proportion = this.getMaskedProportion(targetNode.textContent, gainNode.textContent);
+        const proportion = this.getMaskedProportion(accountTotalNode.textContent, gainNode.textContent);
         WidgetBase.maskUp(gainNode, toGainDollars(proportion));
     }
 
@@ -86,44 +98,45 @@ export default class PortfolioSidebarWidget extends WidgetBase
      * Makes sure you don't save a masked value as the original value
      * @param {float} total
      */ 
-    maskAccountsTotalValue()
+    maskPortfolioTotal()
     {
-      // console.log("summaryWidget maskAccountsTotalValue")
-        const total = this.getTargetNodes().length * this.maskValue;
-        WidgetBase.maskUp(this.getAccountsTotal(), toDollars(total));
+        const total = this.getAccountTotalNodes().length * this.maskValue;
+        WidgetBase.maskUp(this.getPortfolioTotalNode(), toDollars(total));
     }
 
     /************************ RESETTERS ***********************/
 
 
-    resetSecondaryEffects()
+    resetNodes()
     {
-      // console.log("summaryWidget resetSecondaryEffects");
-        for (const node of this.targetNodeList)
+        this.resetAccountTotals();
+        for (const accountTotalNode of this.getAccountTotalNodes())
         {
-            this.resetGainNodeValue(node);
+            this.resetGains(accountTotalNode);
         }
-        this.resetAccountsTotalValue();
-        this.resetGroupTotalValues();
+        this.resetPortfolioTotal();
+        this.resetGroupTotals();
     }
 
-    resetGainNodeValue(node)
+    resetAccountTotals()
     {
-      // console.log("summaryWidget resetGainNodeValue", node)
-        const gainNode = PortfolioSidebarWidget.getGainNode(node);
+        WidgetBase.unmask(this.getAccountTotalNodes());
+    }
+
+    resetGains(accountTotalNode)
+    {
+        const gainNode = PortfolioSidebarWidget.getGainNode(accountTotalNode);
         if (!gainNode) return;
         WidgetBase.unmask(gainNode);
     }
 
-    resetAccountsTotalValue()
+    resetPortfolioTotal()
     {
-      // console.log("summaryWidget resetAccountsTotalValue");
-        WidgetBase.unmask(this.getAccountsTotal());
+        WidgetBase.unmask(this.getPortfolioTotalNode());
     }
 
-    resetGroupTotalValues()
+    resetGroupTotals()
     {
-      // console.log("summaryWidget resetGroupTotalValues");
         const groupTotalNodes = this.getGroupTotalNodes();
         for (const groupTotalNode of groupTotalNodes)
         {
@@ -134,23 +147,35 @@ export default class PortfolioSidebarWidget extends WidgetBase
     /************************ GETTERS ***********************/
 
     /**
+     * Returns a list matching the accountTotalsSelector
+     * @param {Node|NodeList} parentNodes node(s) to search within, defaults to common ancestor
+     * @returns NodeList
+     */
+    getAccountTotalNodes(parentNodes = this.getCommonAncestorNode())
+    {
+        if (!WidgetBase.isConnected(this.accountTotalNodes))
+        {
+            this.accountTotalNodes = WidgetBase.getNodes(parentNodes, this.accountTotalsSelector, true);
+        }
+        return this.accountTotalNodes;
+    }
+
+    /**
      * Get the gain/loss node for the given node.
      * The gain node is the node with the daily gain/loss value.
      * 
-     * @param {Node} starterNode 
+     * @param {Node} accountTotalNode 
      * @returns Node|null
      */
-    static getGainNode(starterNode)
+    static getGainNode(accountTotalNode)
     {
-      // console.log('summaryWidget getGainNode', starterNode);
         let gainNode = null;
         try
         {
-            gainNode = starterNode.parentElement.nextElementSibling.childNodes[1];
+            gainNode = accountTotalNode.parentElement.nextElementSibling.childNodes[1];
         }
         catch (error)
         {
-            // console.warn('did not find gain node');
         }
         return gainNode
     }
@@ -160,14 +185,13 @@ export default class PortfolioSidebarWidget extends WidgetBase
      * It is memoized as an instance variable since it is used frequently and is a specific node.
      * @returns {Node}
      */
-    getAccountsTotal()
+    getPortfolioTotalNode()
     {
-      // console.log("summaryWidget getAccountsTotal")
-        if (!this.accountsTotal)
+        if (!WidgetBase.isConnected(this.portfolioTotalNode))
         {
-            this.accountsTotal = document.querySelector(this.accountsTotalSelector + WidgetBase.notCloneSelector);
+            this.portfolioTotalNode = WidgetBase.getNodes(this.getCommonAncestorNode(), this.portfolioTotalSelector);
         }
-        return this.accountsTotal;
+        return this.portfolioTotalNode;
     }
 
     /**
@@ -176,6 +200,54 @@ export default class PortfolioSidebarWidget extends WidgetBase
      */
     getGroupTotalNodes()
     {
-        return document.querySelectorAll(this.groupTotalNodesSelector + WidgetBase.notCloneSelector);;
+        if (!WidgetBase.isConnected(this.groupTotalNodes))
+        {
+            this.groupTotalNodes = WidgetBase.getNodes(this.getCommonAncestorNode(), this.groupTotalSelector, true);
+        }
+        return this.groupTotalNodes;
     }
+
+    /************************ WATCHERS ***********************/
+
+    activateWatchers()
+    {
+        this.watchForAccountTotals();
+    }
+
+    /**
+     * Immediately calls logic if nodes exist. 
+     * Watches for nodes regardless.
+     * Does not disconnect
+     */
+    watchForAccountTotals()
+    {
+        const _wasFoundLogic = () => {
+            this.maskSwitch();
+        }
+        const _watchLogic = (mutations) => {
+            for (const mutation of mutations)
+            {
+                if (
+                    ((mutation.addedNodes.length && (mutation.type === 'childlist' || mutation.type === 'subtree'))
+                    && this.getAccountTotalNodes(mutation.addedNodes).length)
+                ||
+                    (mutation.type === 'characterData' 
+                    && !WidgetBase.isConnected(this.accountTotalNodes) // accountTotalNodes were not connected
+                    && this.getAccountTotalNodes().length // but they were found upon requery
+                    )
+                )
+                { 
+                    _wasFoundLogic();
+                }
+            }
+        } 
+        if (this.getAccountTotalNodes().length) // account totals already exist, no need to watch for it
+        { 
+            _wasFoundLogic();
+        }
+        const observerConfig = { ...WidgetBase.observerConfig, ...{ characterData: true }};
+        this.observers.accountTotals = WidgetBase.createObserver(this.getCommonAncestorNode(), _watchLogic, false, 1, observerConfig);
+    }
+
+
 }

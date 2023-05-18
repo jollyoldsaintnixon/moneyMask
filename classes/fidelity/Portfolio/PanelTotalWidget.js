@@ -4,7 +4,6 @@ import {
     toGainDollars,
     arrayToList
 } from "../../helpers";
-import OnlySecondaryWidgetBase from "../../OnlySecondaryWidgetBase";
 import WidgetBase from "../../WidgetBase";
 
 /**
@@ -13,13 +12,12 @@ import WidgetBase from "../../WidgetBase";
  * are determined by changes in a node outside of its scope.
  * TODO: I need to add a listener that updates the graph labels whenever one of the four graphs is first clicked. They do not load until clicked the first time, and there is a delay.
  */
-export default class PanelTotalWidget extends OnlySecondaryWidgetBase 
+export default class PanelTotalWidget extends WidgetBase 
 {
-    targetNodeSelector = '.total-balance__value';
-    targetCommonAncestorSelector = '.balance-overtime-card-container.helios-override'; // it is an element
-    listenersInitiated = false; // this will listen for clicks on the common ancestor. The portfolio and gain nodes can be replaced when the user clicks on the common ancestor.
+    totalSelector = '.total-balance__value'; // account or portfolio total depending on whether on a specific account page
+    commonAncestorSelector = '.balance-overtime-card-container.helios-override';
     catalystSelector = '.acct-selector__all-accounts > div:nth-child(2) > span:nth-child(2)';
-    portfolioNode = null; // the node that shows the total portfolio value
+    totalNode = null; // the node that shows the total portfolio value
     gainNodeSelector = '.today-change-value > span:first-child';
     gainNode = null; // this will be the node that shows the total portfolio gain/loss for the day
     percentNodeSelector = '.today-change-value > span:nth-child(2)';
@@ -29,56 +27,47 @@ export default class PanelTotalWidget extends OnlySecondaryWidgetBase
     graphYAxisSelector = ".highcharts-yaxis-labels";
     graphNode = null;
     graphLabelNodes = arrayToList([]); 
-    // graphObserver = null; // this will be the observer that watches for changes to a graph that reloads/replaces gain nodes
 
     constructor(maskValue = 100, isMaskOn = false) 
     {
         super(maskValue, isMaskOn);
-        this.maskPortfolioTotalGainNode = this.maskPortfolioTotalGainNode.bind(this);
-        // this.observers.graphObserver = null; // this will be the observer that watches for changes to a graph that reloads/replaces gain nodes
-        this.maskUpOrDownSwitch(); // I couldn't figure out how to call this in OnlySecondaryWidgetBase constructor. The value of catalystSelector was that of OnlySecondaryWidgetBase, not PanelTotalWidget. Weird.
+        this.maskGainNode = this.maskGainNode.bind(this);
+        this.watchForCommonAncestor();
+
     }
 
-    /**
-     * Updates the "gain" node for each account (the gain/loss for the day).
-     * Updates the sum value of all accounts.
-     * ? is this ever called when the mask is down? if not, we can calculate the total much more easily.
-     */
-    maskSecondaryEffects()
+    /************************ MASKERS ***********************/
+
+    putMaskUp()
     {
-      // console.log('summaryBodyTotalWidget maskSecondaryEffects')
-        if (!this.listenersInitiated) // only listen once
-        {
-            this.listenersInitiated = this.initiateListeners();
-        }
-        this.maskPortfolioTotalNode();
-        this.maskPortfolioTotalGainNode();
+        this.maskTotalNode();
+        this.maskGainNode();
         this.maskGraphLabels();
     }
 
     /**
      * Matches this widget's portfolio total node text with that of the catalyst node.
      */
-    maskPortfolioTotalNode()
+    maskTotalNode()
     {
         const catalystText = this.getCatalystText();
         if (catalystText.length) // we found the catalyst node and it had text
         {
-            WidgetBase.maskUp(this.getPortfolioTotalNode(), catalystText);
+            WidgetBase.maskUp(this.getTotalNode(), catalystText);
         }
     }
 
     /**
      * The gain node should be related to the first target node found based on the common ancestor node.
      */
-    maskPortfolioTotalGainNode()
+    maskGainNode()
     {
-        const strippedTotal = this.getStrippedPortfolioTotal();
-        const strippedPercentChange = this.getStrippedPercentChange();
-        const gainDollars = toGainDollars(strippedTotal * (strippedPercentChange / 100));
-        const gainNode = this.getGainNode(this.getPortfolioTotalNode());
+        const gainNode = this.getGainNode();
         if (gainNode)
         {
+            const total = this.getTotalText();
+            const percentChange = this.getPercentChange();
+            const gainDollars = toGainDollars(total * (percentChange / 100));
             WidgetBase.maskUp(gainNode, gainDollars)
         }
     }
@@ -88,10 +77,10 @@ export default class PanelTotalWidget extends OnlySecondaryWidgetBase
         const graphNode = this.getGraphNode();
         if (graphNode)
         {
-            const yAxisNode = graphNode.querySelector(this.graphYAxisSelector);
+            const yAxisNode = WidgetBase.getNodes(graphNode, this.graphYAxisSelector);
             if (yAxisNode)
             {
-                this.graphLabelNodes = yAxisNode.querySelectorAll('text' + WidgetBase.notCloneSelector);
+                this.graphLabelNodes = WidgetBase.getNodes(yAxisNode, 'text', true);
                 if (this.graphLabelNodes.length === 3) // there should only be three nodes
                 {
                     const total = stripToNumber(this.getCatalystText());
@@ -103,90 +92,59 @@ export default class PanelTotalWidget extends OnlySecondaryWidgetBase
         }
     }
 
-    /**
-     * Certain actions can reset/reload the gain nodes. These listen for those events
-     * @returns boolean - true if successfully initiated
-     */
-    initiateListeners()
+    /******************** RESETTERS **********************/
+
+    resetNodes()
     {
-        if (!this.getCommonAncestorNode()) // if the common ancestor isn't loaded, we can't initiate listeners. This will reattempt later.
+        this.resetTotalNode();
+        this.resetGainNode();
+        this.resetGraphLabels();
+    }
+
+    resetTotalNode()
+    {
+        WidgetBase.unmask(this.getTotalNode());
+    }
+
+    resetGainNode()
+    {
+        WidgetBase.unmask(this.getGainNode());
+    }
+
+    resetGraphLabels()
+    {
+        if (this.graphLabelNodes && this.graphLabelNodes.length)
         {
-            return false;
-        }
-        this.initCommonAncestorListener();
-        this.watchForHighCharts(); // the graphs are loaded after the page loads, so we need to watch for them
-        return true;
-    }
-
-    initCommonAncestorListener()
-    {
-        const commonAncestor = this.getCommonAncestorNode();
-        if (commonAncestor)
-        {
-            commonAncestor.addEventListener('click', () => {
-                if (this.isMaskOn)
-                {
-                    this.maskPortfolioTotalGainNode();
-                    this.maskGraphLabels();
-                }
-            });
+            for (const node of this.graphLabelNodes)
+            {
+                WidgetBase.unmask(node);
+            }
         }
     }
 
-    watchForHighCharts()
-    {
-        this.observers.graphObserver = WidgetBase.createObserver(this.getCommonAncestorNode(), (mutations) => {
-          // console.log('summaryBodyTotalWidget watchForHighCharts callback');
-            for (const mutation of mutations)
-            {
-                if ((mutation.addedNodes.length && mutation.type === 'childList' || mutation.type === 'subtree')
-                    && this.getGraphNode(mutation.addedNodes))
-                {
-                    if (this.isMaskOn)
-                    {
-                        this.maskGraphLabels();
-                    }
-                    this.initHighChartsListener(); // this.graphNode is set by this.graphWasFound() if any nodes were found
-                    this.observers.graphObserver.disconnect();
-                    break;
-                }
-            }
-        });
-    }
-
-    /**
-     * 
-     * @param {Node} graphNode 
-     */
-    initHighChartsListener()
-    {
-        this.getGraphNode().addEventListener('mouseleave', () => {
-            if (this.isMaskOn)
-            {
-                this.maskPortfolioTotalGainNode(); // triggers when leaving 
-                this.maskGraphLabels();
-            }
-        });
-    }
+    /************************ GETTERS ***********************/
 
     /**
      * Should be the first node in the list of target nodes under the common ancestor.
+     * @param {Node|NodeList} parentNodes the parent nodes to search under
      * @returns {Node} the node that shows the total value of all accounts
      */
-    getPortfolioTotalNode()
+    getTotalNode(parentNodes = this.getCommonAncestorNode())
     {
-        this.portfolioNode = this.portfolioNode ?? this.getTargetNodes(this.getCommonAncestorNode())[0];
-        return this.portfolioNode;
+        if (!WidgetBase.isConnected(this.totalNode))
+        {
+            this.totalNode = WidgetBase.getNodes(parentNodes, this.totalSelector);
+        }
+        return this.totalNode;
     }
 
     getPercentNode()
     {
-        let node = document.querySelector(this.percentNodeSelector);
-        if (node && node.classList.contains(WidgetBase.cloneClass)) // if the node is a clone, we need to get the original
+        if (!WidgetBase.isConnected(this.percentNode))
         {
-            node = node.nextElementSibling;
+            this.percentNode = WidgetBase.getNodes(this.getCommonAncestorNode(), this.percentNodeSelector);
         }
-        return node;
+        return this.percentNode;
     }
 
     /**
@@ -195,7 +153,7 @@ export default class PanelTotalWidget extends OnlySecondaryWidgetBase
      */
     getCatalystText()
     {
-        const catalystNode = document.querySelector(this.catalystSelector + WidgetBase.notCloneSelector); // requery this node each time since it can be nonexistent, removed, or reloaded
+        const catalystNode = WidgetBase.getNodes(document, this.catalystSelector); // requery this node each time since it can be nonexistent, removed, or reloaded
         if (catalystNode)
         {
             if (!this.isMaskOn) // mask is down, return original node text
@@ -213,28 +171,28 @@ export default class PanelTotalWidget extends OnlySecondaryWidgetBase
     /**
      * Gets the float representation of the portfolio total node or its clone, depending on mask up/down state. Defaults to 0.
      */
-    getStrippedPortfolioTotal()
+    getTotalText()
     {
         let total = "0";
-        const portfolioNode = this.getPortfolioTotalNode();
-        if (portfolioNode)
+        const totalNode = this.getTotalNode();
+        if (totalNode)
         {
             if (!this.isMaskOn) // mask is down, return original node text
             {
-                total = portfolioNode.textContent;
+                total = totalNode.textContent;
             }
             else
             {
-                if (portfolioNode.dataset.hasClone == "true") // mask is up and has clone
+                if (totalNode.dataset.hasClone == "true") // mask is up and has clone
                 {
-                    total = portfolioNode.nextSibling.textContent;
+                    total = totalNode.nextSibling.textContent;
                 }
             }
         }
         return stripToNumber(total);
     }
 
-    getStrippedPercentChange()
+    getPercentChange()
     {
         const percentNode = this.getPercentNode();
         if (percentNode)
@@ -256,90 +214,128 @@ export default class PanelTotalWidget extends OnlySecondaryWidgetBase
      */
     getGainNode()
     {
-        // const commonAncestor = this.getCommonAncestorNode();
-      // console.log('summaryBodyTotalWidget getGainNode', starterNode);
-        // if (this.gainNode) return this.gainNode; // short circuit if already found
-        let gainNode = null;
-        try
+        if (!WidgetBase.isConnected(this.gainNode))
         {
-            // gainNode = starterNode.parentElement.nextElementSibling.childNodes[1];
-            gainNode = this.getCommonAncestorNode().querySelector(this.gainNodeSelector);
+            this.gainNode = WidgetBase.getNodes(this.getCommonAncestorNode(), this.gainNodeSelector);
         }
-        catch (error)
-        {
-            gainNode = null;
-        }
-        return gainNode;
+        return this.gainNode;
     }
 
     /**
      * 
-     * @param {NodeList|Node} nodes defaul;ts to document
+     * @param {NodeList|Node} parentNodes defaults to document
      * @returns 
      */
-    getGraphNode(nodes = document)
+    getGraphNode(parentNodes = document)
     {
-        // this.graphNode = this.graphNode ?? document.querySelector(this.graphSelector);
-        if (!this.graphNode || !this.graphNode.isConnected)
+        if (!WidgetBase.isConnected(this.graphNode))
         {
-            this.graphNode = WidgetBase.getNodes(nodes, this.graphSelector);
+            this.graphNode = WidgetBase.getNodes(parentNodes, this.graphSelector);
         }
         return this.graphNode;
     }
 
-    resetSecondaryEffects()
+    /************************ WATCHERS ***********************/
+
+    activateWatchers()
     {
-      // console.log('summaryBodyTotalWidget resetSecondaryEffects');
-        this.resetPortfolioTotalNode();
-        this.resetPortfolioTotalGainNode();
-        this.resetGraphLabels();
+        this.initCommonAncestorListener();
+        this.watchForTotalNode();
+        this.watchForHighCharts();
     }
 
-    resetPortfolioTotalNode()
+    /**
+     * Immediately runs wasFoundLogic if node already exists.
+     * Always listens for adding of nodes.
+     */
+    watchForTotalNode() 
     {
-        WidgetBase.unmask(this.getPortfolioTotalNode());
-    }
-
-    resetPortfolioTotalGainNode()
-    {
-        WidgetBase.unmask(this.getGainNode(this.getPortfolioTotalNode()));
-    }
-
-    resetGraphLabels()
-    {
-        if (this.graphLabelNodes && this.graphLabelNodes.length)
-        {
-            for (const node of this.graphLabelNodes)
+        const _wasFoundLogic = () => {
+            this.maskSwitch();
+        };
+        const _watchLogic = (mutations) => {
+            for (const mutation of mutations)
             {
-                WidgetBase.unmask(node);
+                if ((mutation.addedNodes.length && (mutation.type === 'childlist' || mutation.type === 'subtree'))
+                && !this.graphHoverMutation()
+                && this.getTotalNode(mutation.addedNodes))
+                { 
+                    _wasFoundLogic();
+                } 
             }
+        };
+        if (this.getTotalNode())
+        {
+            _wasFoundLogic();
+        }
+        this.observers.totalObserver = WidgetBase.createObserver(this.getCommonAncestorNode(), _watchLogic);
+    }
+
+    /**
+     * Immediately runs wasFoundLogic if graph already exists.
+     * Always listens for adding of graph.
+     */
+    watchForHighCharts()
+    {
+        const _wasFoundLogic = () => {
+            if (this.isMaskOn)
+            {
+                this.maskGraphLabels();
+            }
+        };
+        const _watchLogic = (mutations) => {
+            for (const mutation of mutations)
+            {
+                if ((mutation.addedNodes.length && (mutation.type === 'childList' || mutation.type === 'subtree'))
+                && this.getGraphNode(mutation.addedNodes)) // only proc if graph node is within the addedNodes
+                { 
+                    _wasFoundLogic();
+                } 
+            }
+        };
+        if (this.getGraphNode())
+        {
+            _wasFoundLogic();
+        }
+        this.observers.graphObserver = WidgetBase.createObserver(this.getCommonAncestorNode(), _watchLogic);
+    }
+
+    /************************ HELPERS ***********************/
+
+    initCommonAncestorListener()
+    {
+        const commonAncestor = this.getCommonAncestorNode();
+        if (commonAncestor)
+        {
+            commonAncestor.addEventListener('click', () => {
+                if (this.isMaskOn)
+                {
+                    this.maskGainNode();
+                    this.maskGraphLabels();
+                }
+            });
         }
     }
 
     /**
-     *  Overwritten from parent since we don't want to trigger a maskUpOrDownSwitch whenever we scroll over Watches over only the set of nodes that are relevant to the widget.
+     * 
+     * @param {Node} graphNode 
      */
-    activateTargetedObserver() 
+    initHighChartsListener()
     {
-        this.targetCommonAncestorNode = this.targetCommonAncestorNode ?? document.querySelectorAll(this.targetCommonAncestorSelector); // set targetCommonAncestorNode if it is not already set
-        // console.log("widget activateTargetedObserver")
-        this.observers.targetedObserver = WidgetBase.createObserver(this.targetCommonAncestorNode, (mutations) => {
-            // console.log("widget targetedObserver callback")
-            // console.log("target mutations.length: ", mutations.length)
-            for (const mutation of mutations)
+        this.getGraphNode().addEventListener('mouseleave', () => {
+            if (this.isMaskOn)
             {
-                if ((mutation.type === 'childList' || mutation.type === 'subtree')
-                    && !this.graphScrollMutation() // ! this is the change from the parent
-                    && this.refreshTargetNodes(this.targetCommonAncestorNode).length) // this.targetNodeList will be set here
-                {
-                    this.maskUpOrDownSwitch();
-                    break; // break out of the loop for efficiency
-                }
+                this.maskGainNode(); // triggers when leaving 
+                this.maskGraphLabels();
             }
         });
     }
 
-    graphScrollMutation()
+    /**
+     * @returns {boolean} true if graph is being hovered over
+     */
+    graphHoverMutation()
     {
         const graphNode = this.getGraphNode(this.getCommonAncestorNode());
         return (graphNode && graphNode.matches(":hover"));

@@ -1,7 +1,5 @@
 import {
-    toDollars,
     dollarsToFloat,
-    arrayToList,
     applyToSingleElemOrList
  } from "./helpers";
 
@@ -19,40 +17,33 @@ export default class WidgetBase
     maskValue = 100;
     isMaskOn = false;
 
-    targetNodeList = arrayToList([]); // initialize as empty list 
+    commonAncestorSelector = 'body'; // This should select the overarching container of the widget. // ! Overwrite in child.
+    wideAreaSearchSelector = 'body'; // Selects the node within which to search for the common ancestor of the widget (probably does not need to be overwritten)
 
-    targetNodeSelector = 'body'; // This should locate any target node. // !Overwrite in child.
-    targetCommonAncestorSelector = 'body'; // This should select the overarching container of the widget. // ! Overwrite in child.
-    wideAreaSearchSelector = 'body'; // probably does not need to be overwritten
+    commonAncestorNode = null; // This is the overarching container of the widget.
+    wideAreaSearchNode = null; // Node within which to to search for the common ancestor
 
-    targetCommonAncestorNode = null; // This is the overarching container of the widget.
-    wideAreaSearchNode = null; // this should very likely be the entire body
-
-    observers = {
-        searchingObserver: null, // runs until targets found
-        targetedObserver: null, // only watches targets
+    observers = { // whenever observers are added by the widget, ensure they are stored here so they can be disconnected later. Key is the string name of the observer, value is the observer itself.
     }
 
     constructor(maskValue = 100, isMaskOn = false) 
     {
-      // console.log("widget constuctor")
         this.maskValue = maskValue;
         this.isMaskOn = isMaskOn;
-        this.activateWideSearchObserver();
     }
+
+    /******************** CORE **********************/
 
     /**
      * Should be called whenever the user changes the desired
      * mask value in the pop up.
-     * 
      * @param {int} maskValue 
      * @returns {void}
      */
     updateMaskValue(maskValue)
     {
-      // console.log("widget updateMaskValue", maskValue)
         this.maskValue = maskValue;
-        this.maskUpOrDownSwitch();
+        this.maskSwitch();
     }
 
     /**
@@ -62,28 +53,26 @@ export default class WidgetBase
     updateMaskActivated(isMaskOn)
     {
         this.isMaskOn = isMaskOn;
-        this.maskUpOrDownSwitch();
+        this.maskSwitch();
     }
 
     /**
      * Determines the action to take based on the current mask state.
      */
-    maskUpOrDownSwitch()
+    maskSwitch()
     {
         if (this.isMaskOn)
         {
-            WidgetBase.maskUp(this.getTargetNodes(), toDollars(this.maskValue));
-            this.maskSecondaryEffects();
+            this.putMaskUp(); // * overwrite in child
         }
         else
         {
-            WidgetBase.unmask(this.getTargetNodes());
-            this.resetSecondaryEffects();
+            this.resetNodes(); // * overwrite in child
         }
     }
 
     /**
-     * Disconnects ann observers.
+     * Called when removing the widget. Disconnects any observers.
      */
     deactivate()
     {
@@ -94,184 +83,22 @@ export default class WidgetBase
                 const observer = this.observers[key];
                 if (observer) // make sure it is not set to null
                 {
-                    observer.disconnect();
+                    WidgetBase.tryDisconnect(observer);
                 }
             }
         }
     }
 
-    /**
-     * The searchingObserver is called whenever the DOM updates
-     * (eg returning AJAX requests). It searches for the element containing
-     * the unmasked monetary value; once that element is loaded, it should deactivate.
-     * Monitoring then passes to the targetedObserver, which only watches the 
-     * specific elements we care about.
-     * ?  could we simply change the wideAreaSearchSelector to the targetNodeList?
-     */
-    activateWideSearchObserver() 
-    {
-      // console.log("widget activateWideSearchObserver")
-        this.observers.searchingObserver = WidgetBase.createObserver(this.getWideAreaSearchNode(), (mutations) => {
-          // console.log("widget activateWideSearchObserver callback")
-          // console.log("search mutations.length: ", mutations.length)
-            for (const mutation of mutations) 
-            {
-                if (
-                    (mutation.type === 'childList' || mutation.type === 'subtree')
-                    && this.getTargetNodes(mutation.addedNodes).length // checks for the targetNodes each time
-                ) 
-                {
-                    try 
-                    { 
-                        this.maskUpOrDownSwitch();
-                        this.activateTargetedObserver();
-                    } 
-                    catch (error) 
-                    {
-                        console.warn(error)
-                    }
-                    finally
-                    {
-                        this.observers.searchingObserver.disconnect();
-                        break;
-                    }
-                }
-            }
-        })
-    }
+    /******************** MASKERS **********************/
 
     /**
-     * Watches over only the set of nodes that are relevant to the widget.
+     * Call the masking logic. // ! This should be overwritten in child classes.
      */
-    activateTargetedObserver() 
-    {
-        this.targetCommonAncestorNode = this.targetCommonAncestorNode ?? this.getCommonAncestorNode(); // set targetCommonAncestorNode if it is not already set
-      // console.log("widget activateTargetedObserver")
-        this.observers.targetedObserver = WidgetBase.createObserver(this.targetCommonAncestorNode, (mutations) => {
-          // console.log("widget targetedObserver callback")
-          // console.log("target mutations.length: ", mutations.length)
-            for (const mutation of mutations)
-            {
-                if ((mutation.type === 'childList' || mutation.type === 'subtree')
-                    && this.refreshTargetNodes(this.targetCommonAncestorNode).length) // this.targetNodeList will be set here
-                {
-                    this.maskUpOrDownSwitch();
-                    break; // break out of the loop for efficiency
-                }
-            }
-        });
-    }
-
-    /**
-     * Search the nodeList for the target nodes. Short circuits if the targetNodeList already found.
-     * Returns the targetNodeList and saves it to this.targetNodeList if it's empty.
-     * @param {NodeList|Node} nodeList 
-     */
-    getTargetNodes(nodeList = this.getWideAreaSearchNode())
-    {
-      // console.log("widget targetNodeList")
-        if (this.targetNodeList && this.targetNodeList.length) // short circuit
-        {
-            return this.targetNodeList;
-        }
-        this.targetNodeList = this.findTargetNodes(nodeList);
-        return this.targetNodeList;
-    }    
-    
-    /**
-     * @returns {Node} common ancestor of the target nodes
-     */
-    getCommonAncestorNode()
-    {
-        if (!this.targetCommonAncestorNode)
-        {
-            this.targetCommonAncestorNode = document.querySelector(this.targetCommonAncestorSelector);
-        }
-        return this.targetCommonAncestorNode;
-    }
-
-    /**
-     * Returns the wide area node to search for target nodes (defaults to 'body').
-     * @returns {Node} wideAreaSearchNode
-     */
-    getWideAreaSearchNode()
-    {
-        if (!this.wideAreaSearchNode)
-        {
-            this.wideAreaSearchNode = document.querySelector(this.wideAreaSearchSelector);
-        }
-        return this.wideAreaSearchNode;
-    }
-
-    /**
-     * Searches again for target nodes. If any found, resets current targetNodeList to the new targets nodes
-     * @param {NodeList|Node} nodeList 
-     * @returns {NodeList} targetNodeList
-     */
-    refreshTargetNodes(nodeList = this.getWideAreaSearchNode())
-    {
-      // console.log("widget refreshTargetNodes", nodeList)
-        const targetNodeList = this.findTargetNodes(nodeList);
-        if (targetNodeList.length)
-        {
-            this.targetNodeList = targetNodeList;
-        }
-        return targetNodeList;
-    }
-
-    /**
-     * ! Be sure to overwrite "targetNodeSelector" in child class. 
-     * Returns the nodes that the widget should update. 
-     * * Will overwrite this.targetNodeList if any matches are found.
-     * 
-     * @returns {NodeList|Node} targetNodeList
-     */
-    findTargetNodes(nodeList = this.nodeToSearch)
-    {
-      // console.log("widget findTargetNodes", nodeList)
-        const _findTargetNodes = (node) => { // sub function for handling cases when a single node is passed in and when a nodeList is passed in
-            // check if it's an element and if there are any sub elements that match our target selector
-            if (node.nodeType === Node.ELEMENT_NODE && node.querySelectorAll(this.targetNodeSelector + WidgetBase.notCloneSelector).length)
-            {
-                this.targetNodeList = node.querySelectorAll(this.targetNodeSelector);
-                return true;
-            }
-        };
-        applyToSingleElemOrList(nodeList, _findTargetNodes);
-        return this.targetNodeList;
-    }
-
-    /**
-     * Trigger any after/secondary mask up effects here. // ! This should be overwritten in child classes.
-     * Effects should be determined by values in targetNodeList.
-     * @returns {void}
-     */
-    maskSecondaryEffects()
+    putMaskUp()
     {
         return;
     }
-
-    /**
-     * Reset any after/secondary effects here. // ! This should be overwritten in child classes.
-     * @returns {void}
-     */
-    resetSecondaryEffects()
-    {
-        return;
-    }
-
-    /**
-     * Convert the old fraction to a amount based on the mask value.
-     * @param {string} totalDollars the original total
-     * @param {string} proportionDollars the fraction of the totalDollars
-     * @returns {float}
-     */
-    getMaskedProportion(totalDollars, proportionDollars)
-    {
-        const proportion = dollarsToFloat(proportionDollars) / dollarsToFloat(totalDollars);
-        return this.maskValue * proportion;
-    }
-    
+        
     /**
      * The central logic behind concealing the monetary value. Reveals the clones, which will show the mask value, and hides the originals.
      * @param {Node|NodeList} nodes
@@ -292,6 +119,17 @@ export default class WidgetBase
         applyToSingleElemOrList(nodes, _maskUp);
     }
 
+    /******************** RESETTERS **********************/
+
+    /**
+     * Reset any after/secondary effects here. // ! This should be overwritten in child classes.
+     * @returns {void}
+     */
+    resetNodes()
+    {
+        return;
+    }
+
     /**
      * Reveal the original nodes (which have the original values) and hide the clones (which have the masked value).
      * @param {NodeList|Node} nodes
@@ -305,8 +143,6 @@ export default class WidgetBase
                 WidgetBase.hideNode(node.nextSibling);// hide the clone
             }
         }
-      // console.log("widget maskDown")
-        // make sure we have values to restore
         applyToSingleElemOrList(nodes, _unmask);
     }
 
@@ -332,6 +168,130 @@ export default class WidgetBase
             }
         }
         applyToSingleElemOrList(nodes, _unmaskTree);
+    }
+
+    /******************** GETTERS **********************/
+        
+    /**
+     * @param {NodeList|Node} nodes
+     * @returns {Node} common ancestor of the target nodes
+     */
+    getCommonAncestorNode(nodes = this.getWideAreaSearchNode())
+    {
+        if (!WidgetBase.isConnected(this.commonAncestorNode))
+        {
+            this.commonAncestorNode = WidgetBase.getNodes(nodes, this.commonAncestorSelector);
+        }
+        return this.commonAncestorNode;
+    }
+
+    /**
+     * Returns the wide area node to search for common ancestor within (defaults to 'body').
+     * @returns {Node} wideAreaSearchNode
+     */
+    getWideAreaSearchNode()
+    {
+        if (!WidgetBase.isConnected(this.wideAreaSearchNode))
+        {
+            this.wideAreaSearchNode = WidgetBase.getNodes(document, this.wideAreaSearchSelector);
+        }
+        return this.wideAreaSearchNode;
+    }
+
+    /**
+     * Return a node found within a node list. If selectAll is true, return a list of nodes.
+     * Excludes clones.
+     * @param {NodeList|Node|null} parentNodes nodes to search under. can be single node.
+     * @param {string} selector 
+     * @param {boolean} selectAll whether to select all nodes that match the selector or just the first. defaults to false.
+     * @returns {Node|NodeList|null}
+     */
+    static getNodes(parentNodes, selector, selectAll = false)
+    {
+        if (!parentNodes || (typeof parentNodes[Symbol.iterator] === 'function' && !parentNodes.length) || !WidgetBase.isConnected(parentNodes)) // if no parent nodes or not connected, return null
+        {
+            return null;
+        }
+        selector += WidgetBase.notCloneSelector; // exclude clones
+        let target = null;
+        const _getNodes = (node) => {
+            if ((!target // if we found what we are looking for, do nothing
+                || (typeof target[Symbol.iterator] === 'function' && !target.length)) // case it is an empty list
+                && (node.nodeType === Node.ELEMENT_NODE || node.nodeType === Node.DOCUMENT_NODE))
+            {
+                target = selectAll ? node.querySelectorAll(selector) : node.querySelector(selector);
+            }
+        }
+        applyToSingleElemOrList(parentNodes, _getNodes); // should set target
+        return target;
+    }
+
+    /**
+     * Get the clone of the node. Returns null if none found.
+     * @param {Node} node
+     * @returns {Node|null} the clone of the node 
+     */
+    static getClone(node)
+    {
+        let clone = null;
+        const sibling = node.nextSibling;
+        if (sibling && sibling.classList.contains(WidgetBase.cloneClass))
+        {
+            clone = sibling;
+        }
+        return clone;
+    }
+
+    /******************** WATCHERS **********************/
+
+    /**
+     * This is called from the WidgetBase constructor. It watches for the common ancestor node to be added to the DOM. The common ancestor node is the node that delineates the boundary of the widget; all nodes that the widget updates should be within its boundaries.
+     * - Calls activateWatchers() when the common ancestor node is found.
+     * - Does not initiate observer if common ancestor node already exists, instead calls activateWatchers() immediately.
+     * - Disconnects when common ancestor node is found.
+     */
+    watchForCommonAncestor()
+    {
+        const _wasFoundLogic = () => {
+            this.activateWatchers();
+        }
+        const _watchLogic = (mutations) => {
+            for (const mutation of mutations)
+            {
+                if (mutation.addedNodes.length && (mutation.type === 'childList' || mutation.type === 'subtree')
+                    && this.getCommonAncestorNode())
+                {
+                    _wasFoundLogic();
+                    WidgetBase.tryDisconnect(this.observers.commonAncestor);
+                    break;
+                }
+            }
+        };
+        if (this.getCommonAncestorNode()) // common ancestor already exists, so we don't need to watch for it
+        {
+            _wasFoundLogic();
+        }
+        else // common ancestor does not exist, so we need to watch for it
+        {
+            this.observers.commonAncestor = WidgetBase.createObserver(this.getWideAreaSearchNode(), _watchLogic);
+        }
+    }
+
+    /**
+     * ! OVERWRITE IN CHILD
+     * This is called when the widget's common ancestor is added to the DOM. It should activate all watchers of nodes that the widget updates or otherwise observers.
+     */
+    activateWatchers()
+    {
+        return;
+    }
+
+    static tryDisconnect(observer)
+    {
+        if (observer instanceof MutationObserver)
+        {
+            observer.disconnect();
+        }
     }
 
     /**
@@ -360,9 +320,22 @@ export default class WidgetBase
             }
             observer.observe(node, observerConfig);
         }
-        // console.log("base createObserver")    
         applyToSingleElemOrList(nodes, _watchNode, observer);
         return observer;
+    }
+
+    /******************** HELPERS **********************/
+
+    /**
+     * Convert the old fraction to a amount based on the mask value.
+     * @param {string} totalDollars the original total
+     * @param {string} proportionDollars the fraction of the totalDollars
+     * @returns {float}
+     */
+    getMaskedProportion(totalDollars, proportionDollars)
+    {
+        const proportion = dollarsToFloat(proportionDollars) / dollarsToFloat(totalDollars);
+        return this.maskValue * proportion;
     }
 
     /**
@@ -392,22 +365,6 @@ export default class WidgetBase
 
         };
         applyToSingleElemOrList(nodes, _makeClone);
-    }
-
-    /**
-     * Get the clone of the node. Returns null if none found.
-     * @param {Node} node
-     * @returns {Node|null} the clone of the node 
-     */
-    static getClone(node)
-    {
-        let clone = null;
-        const sibling = node.nextSibling;
-        if (sibling && sibling.classList.contains(WidgetBase.cloneClass))
-        {
-            clone = sibling;
-        }
-        return clone;
     }
 
     /**
@@ -450,33 +407,35 @@ export default class WidgetBase
         // do nothing if it is not hidden
     }
 
-    static tryDisconnect(observer)
-    {
-        if (observer instanceof MutationObserver)
-        {
-            observer.disconnect();
-        }
-    }
-
     /**
-     * Return a node found within a node list. If selectAll is true, return a list of nodes.
-     * @param {NodeList|Node|null} nodes to search under. can be single node.
-     * @param {string} selector 
-     * @param {boolean} selectAll whether to select all nodes that match the selector or just the first
-     * @returns {Node|NodeList|null}
+     * Takes in a single node or a list of nodes. If any node is no longer connected to the DOM, returns false.
+     * NB: We don't call applyToSingleElemOrList here because it is more efficient to do a modified "some" loop
+     * @param {Node|Nodelist} nodes
+     * @returns {boolean} whether the node or all nodes in list is/are connected to the DOM 
      */
-    static getNodes(nodes, selector, selectAll = false)
+    static isConnected(nodes)
     {
-        let needleNode = null;
-        const _getNodes = (node) => {
-            if ((!needleNode // if we found what we are looking for, do nothing
-                || (typeof needleNode[Symbol.iterator] === 'function' && !needleNode.length)) // case it is an empty list
-                && (node.nodeType === Node.ELEMENT_NODE || node.nodeType === Node.DOCUMENT_NODE))
-            {
-                needleNode = selectAll ? node.querySelectorAll(selector) : node.querySelector(selector);
-            }
+        const _isConnected = (node) => {
+            return node.isConnected;
         }
-        applyToSingleElemOrList(nodes, _getNodes); // should set needleNode
-        return needleNode;
+        if (!nodes || (typeof nodes[Symbol.iterator] === 'function' && nodes.length === 0)) // return false if no nodes
+        { 
+            return false;
+        }
+        else if (typeof nodes[Symbol.iterator] === 'function') // list of nodes
+        {
+            for (const node of nodes)
+            {
+                if (!_isConnected(node))
+                {
+                    return false;
+                }
+            }
+            return true;
+        }
+        else // single node
+        {
+            return _isConnected(nodes);
+        }
     }
 }
