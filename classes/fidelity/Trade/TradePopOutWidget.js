@@ -5,7 +5,7 @@ import {
 import WidgetBase from "../../WidgetBase.js";
 /** This widget represents the "pop out" sidebar trade menu. It can be accessed though a security row listed in the portfolio positions tab, or by clicking the "Trade" button located immediately below the "Accounts & Trade" button when in the portofolio section of the site. 
  * 
- * The target node shows the non-margin buying power. This will be set to the mask value. 
+ * ! overwrites watchForCommonAncestor
  * 
  * We also need to mask the margin buying power, the "available without margin impact" nodes, and the "amount owned" nodes. 
  * 
@@ -16,9 +16,10 @@ import WidgetBase from "../../WidgetBase.js";
  * We do not need to disable any buttons since this widget only links to the trade preview. */
 export default class TradePopOutWidget extends WidgetBase 
 {
-    targetNodeSelector = "#eq-ticket__account-balance > div:nth-child(1) > div:nth-child(2)"; // non-margin buying power
-    targetCommonAncestorSelector = "#eq-ticket__account-balance";
-    
+    // commonAncestorSelector = "#eq-ticket__account-balance";
+    commonAncestorSelector = "float_trade_apps";
+    marginSelector = "#eq-ticket__account-balance > div:nth-child(1) > div:nth-child(2)"; // margin buying power
+    margin = null;
     nonMarginSelector = "#eq-ticket__account-balance > div:nth-child(2) > div:nth-child(2)"; // non-margin buying power
     nonMargin = null;
     // marginBuyingPowerSelector = "#eq-ticket__account-balance > div:nth-child(1) > div:nth-child(2)";
@@ -29,7 +30,7 @@ export default class TradePopOutWidget extends WidgetBase
     ownedAmountParentSelector = "#eqt-mts-stock-quatity" // it's a custom element
     ownedAmountParent = null;
 
-    popUpSelector = "float_trade_apps" // it's a custom element
+    // popUpSelector = "float_trade_apps" // it's a custom element
     popUpNode = null;
 
     previewOrderButtonSelector = ".pvd3-button-root.pvd-button--full-width.pvd-button--primary:first-child"; // this retrieves two buttons; use only the first one.
@@ -47,21 +48,26 @@ export default class TradePopOutWidget extends WidgetBase
     constructor(maskValue = 100, isMaskOn = false) 
     {
         super(maskValue, isMaskOn);
-        this.maskUpOrDownSwitch();
-        this.watchForPopUp(); // we need to actually watch for this pop up to appear in order to properly watch for the owned amount
+        this.watchForCommonAncestor();
     }
     /******************** MASKERS **********************/
 
-    maskSecondaryEffects()
+    putMaskUp()
     {
         if (this.getPopUpNode())
         {
+            this.maskMargin();
             this.maskWithoutMarginImpact();
             this.maskNonMargin();
             this.maskOwnedAmount();
             this.maskErrorMessage();
             this.maskPlaceOrderButton();
         }
+    }
+
+    maskMargin()
+    {
+        WidgetBase.maskUp(this.getWithMargin(), toDollars(this.maskValue));
     }
 
     maskWithoutMarginImpact()
@@ -103,7 +109,6 @@ export default class TradePopOutWidget extends WidgetBase
         const ownedAmount = WidgetBase.getNodes(this.getPopUpNode(), this.ownedAmountSelector);
         if (ownedAmount)
         {
-          // console.log("ownedAmount", ownedAmount);
             ownedAmount.classList.add("money-mask-blurred"); // add class "money-mask-blurred" to the owned amount
         }
     }
@@ -159,13 +164,19 @@ export default class TradePopOutWidget extends WidgetBase
 
     /******************** RESETTERS **********************/
 
-    resetSecondaryEffects()
+    resetNodes()
     {
+        this.resetMargin();
         this.resetNonMargin();
         this.resetWithoutMarginImpact();
         this.resetOwnedAmount();
         this.resetErrorMessage();
         this.resetPlaceOrderButton();
+    }
+
+    resetMargin()
+    {
+        WidgetBase.unmask(this.getWithMargin());
     }
 
     resetWithoutMarginImpact()
@@ -231,6 +242,15 @@ export default class TradePopOutWidget extends WidgetBase
 
     /******************** GETTERS **********************/
 
+    getWithMargin(parentNodes = this.getCommonAncestorNode())
+    {
+        if (!WidgetBase.isConnected(this.margin))
+        {
+            this.margin = WidgetBase.getNodes(parentNodes, this.marginSelector);
+        }
+        return this.margin;
+    }
+
     getNonMargin()
     {
         if (!this.nonMargin || !this.nonMargin.isConnected)
@@ -249,14 +269,14 @@ export default class TradePopOutWidget extends WidgetBase
         return this.withoutMarginImpact;
     }
 
-    getWithMargin()
-    {
-        return this.getTargetNodes()[0];
-    }
+    // getWithMargin()
+    // {
+    //     return this.getTargetNodes()[0];
+    // }
 
     getPopUpNode()
     {
-        return this.popUpNode; // it may return null, that is fine. we only want to set this in the pop up observer.
+        return this.commonAncestorNode; // it may return null, that is fine. we only want to set this in the pop up observer.
     }
 
     getPlaceOrderButton()
@@ -270,42 +290,86 @@ export default class TradePopOutWidget extends WidgetBase
 
     /******************** WATCHERS ************************/
 
+    activateWatchers()
+    {
+        this.watchForMargin(); // watch for the margin to appear
+        this.watchForOwnedAmount(); // connect the owned amount observer if the pop up is added
+        this.watchForSubmit(); // watch for the submit button so we can add a click listener when found
+    }
+
+    /**
+     * Disconnects when found
+     */
+    watchForMargin()
+    {
+        const _onFoundLogic = () => {
+            this.maskSwitch();
+        };
+        const _watchLogic = (mutations) => {
+            for (const mutation of mutations)
+            {
+                if (mutation.type === 'childList' && mutation.addedNodes.length
+                    && this.getWithMargin(mutation.addedNodes))
+                {
+                    _onFoundLogic();
+                    this.tryDisconnect("margin")
+                    break;
+                }
+            }
+        };
+        if (this.getWithMargin())
+        {
+            _onFoundLogic();
+        }
+        else
+        {
+            this.observers.margin = WidgetBase.createObserver(this.getCommonAncestorNode(), _watchLogic);
+        }
+    }
+
     /**
      * The main observer that starts other observers (which may in turn start other observers). Is not disabled so long as the widget is active, but this.popUpNode is set when found in order to short-circuit looking into each mutation. All other observers are disabled when the pop up is removed.
      */
-    watchForPopUp()
+    watchForCommonAncestor()
     {
-        const _watchForPopUpCB = (mutations) => {
+        const _onFoundLogic = () => {
+            this.activateWatchers();
+        };
+        const _onRemovedLogic = () => {
+            this.popUpNode = null;
+            this.previewOrderButton = null;
+            this.tryDisconnect("margin");
+            this.tryDisconnect("submitObserver");
+            this.tryDisconnect("errorMessageObserver")
+            this.tryDisconnect("ownedAmountObserver"); // disconnect the owned amount observer if the pop up is removed. However, this pop up observer will remain active.
+        };
+        const _watchLogic = (mutations) => {
             for (const mutation of mutations)
             {
                 if ((mutation.type === 'childList' || mutation.type === 'subtree'))
                 {
-                    if (!this.popUpNode // short-circuit if the pop up is already found
+                    if (!this.commonAncestorNode // short-circuit if the pop up is already found
                         && mutation.addedNodes.length > 0
-                        && (this.popUpNode = WidgetBase.getNodes(mutation.addedNodes, this.popUpSelector))) // check for the pop up in the added nodes and set if found
+                        && this.getCommonAncestorNode(mutation.addedNodes)) // check for the pop up in the added nodes and set if found
                     {
-                        this.watchForOwnedAmount(); // connect the owned amount observer if the pop up is added
-                        this.watchForSubmit(); // watch for the submit button so we can add a click listener when found
+                        _onFoundLogic();
                         break;
                     }
-                    else if (this.popUpNode 
+                    else if (this.commonAncestorNode // removal logic
                         && mutation.removedNodes.length > 0
-                        && WidgetBase.getNodes(mutation.removedNodes, this.popUpSelector))
+                        && WidgetBase.getNodes(mutation.removedNodes, this.commonAncestorSelector))
                     {
-                        this.popUpNode = null;
-                        this.previewOrderButton = null;
-                        WidgetBase.tryDisconnect(this.observers.submitObserver);
-                        WidgetBase.tryDisconnect(this.observers.errorMessageObserver)
-                        WidgetBase.tryDisconnect(this.observers.ownedAmountObserver); // disconnect the owned amount observer if the pop up is removed. However, this pop up observer will remain active.
-                        this.observers.ownedAmountObserver = null;
-                        this.observers.errorMessageObserver = null;
-                        this.observers.submitObserver = null;
+                        _onRemovedLogic();
                         break;
                     }
                 }
             };
         }
-        this.observers.popUpObserver = WidgetBase.createObserver(document.querySelector('body'), _watchForPopUpCB);
+        if (this.getCommonAncestorNode())
+        {
+            _onFoundLogic();
+        }
+        this.observers.commonAncestor = WidgetBase.createObserver(this.getWideAreaSearchNode(), _watchLogic);
     }
 
     /**
@@ -327,7 +391,6 @@ export default class TradePopOutWidget extends WidgetBase
                 };
             }
         }
-        // this.popUpNode = this.popUpNode ?? document.querySelector(this.popUpSelector);
         this.observers.ownedAmountObserver = WidgetBase.createObserver(this.getPopUpNode(), _watchForOwnedAmountCB);
     }
 
@@ -369,7 +432,7 @@ export default class TradePopOutWidget extends WidgetBase
                     && WidgetBase.getNodes(this.getPopUpNode(), this.errorSelector)) // set errorDiv if found in the added nodes
                     {
                         this.maskErrorMessage();
-                        WidgetBase.tryDisconnect(this.observers.errorMessageObserver); // disconnect the error message observer if the error message is found.
+                        this.tryDisconnect("errorMessageObserver"); // disconnect the error message observer if the error message is found.
                         this.observers.errorMessageObserver = null;
                         break; // break out of the mutations list if found
                     }
@@ -392,7 +455,7 @@ export default class TradePopOutWidget extends WidgetBase
                     && this.getPlaceOrderButton()) // set placeOrderButton if found in the added nodes
                     {
                         this.maskPlaceOrderButton();
-                        WidgetBase.tryDisconnect(this.observers.placeOrderObserver); // disconnect the place order observer once the place order button is found.
+                        this.tryDisconnect("placeOrderObserver"); // disconnect the place order observer once the place order button is found.
                         this.observers.placeOrderObserver = null;
                         break; // break out of the mutations list if found
                     }
@@ -431,7 +494,7 @@ export default class TradePopOutWidget extends WidgetBase
     {
         const exitButton =  document.querySelector(this.exitSelector); // it's technially outside the pop up node
         exitButton.addEventListener('click', () => {
-            WidgetBase.tryDisconnect(this.observers.errorMessageObserver);
+            this.tryDisconnect("errorMessageObserver");
         });
     }
 
