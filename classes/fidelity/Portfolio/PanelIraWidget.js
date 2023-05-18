@@ -138,7 +138,7 @@ export default class PanelIraWidget extends WidgetBase
      */ 
     watchForMaxLimit()
     {
-        const _wasFoundLogic = () => {
+        const _onFoundLogic = () => {
             this.maskSwitch();
         };
         const _watchLogic = (mutations) => {
@@ -147,14 +147,14 @@ export default class PanelIraWidget extends WidgetBase
                 if ((mutation.type === 'childList' && mutation.addedNodes.length)
                     && this.getMaxLimitNode(mutation.addedNodes))
                 {
-                    _wasFoundLogic();
+                    _onFoundLogic();
                     break;
                 }
             }
         };
         if (this.getMaxLimitNode())
         {
-            _wasFoundLogic();
+            _onFoundLogic();
         }
         this.observers.iraMaxLimit = WidgetBase.createObserver(this.getCommonAncestorNode(), _watchLogic);
     }

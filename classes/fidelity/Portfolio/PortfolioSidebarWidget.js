@@ -223,7 +223,7 @@ export default class PortfolioSidebarWidget extends WidgetBase
      */
     watchForAccountTotals()
     {
-        const _wasFoundLogic = () => {
+        const _onFoundLogic = () => {
             this.maskSwitch();
         }
         const _watchLogic = (mutations) => {
@@ -239,13 +239,13 @@ export default class PortfolioSidebarWidget extends WidgetBase
                     )
                 )
                 { 
-                    _wasFoundLogic();
+                    _onFoundLogic();
                 }
             }
         } 
         if (this.getAccountTotalNodes().length) // account totals already exist, no need to watch for it
         { 
-            _wasFoundLogic();
+            _onFoundLogic();
         }
         const observerConfig = { ...WidgetBase.observerConfig, ...{ characterData: true }};
         this.observers.accountTotals = WidgetBase.createObserver(this.getCommonAncestorNode(), _watchLogic, false, 1, observerConfig);

@@ -18,7 +18,7 @@ export default class OnlySecondaryWidgetBase extends WidgetBase
     /**
      * Determines the action to take based on the current mask state.
      */
-    maskUpOrDownSwitch()
+    maskSwitch()
     {
         if (this.isMaskOn)
         {

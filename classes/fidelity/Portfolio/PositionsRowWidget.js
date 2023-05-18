@@ -200,7 +200,7 @@ export default class PositionsRowWidget extends WidgetBase
      */
     watchForSecurityRows()
     {
-        const _wasFoundLogic = () => {
+        const _onFoundLogic = () => {
             this.maskSwitch();
         };
         const _watchLogic = (mutations) => {
@@ -209,15 +209,15 @@ export default class PositionsRowWidget extends WidgetBase
                 if ((mutation.addedNodes.length && (mutation.type === 'childlist' || mutation.type === 'subtree'))
                 && this.getSecurityRows(mutation.addedNodes).length)
                 {
-                    _wasFoundLogic();
-                    WidgetBase.tryDisconnect(this.observers.securityRows);
+                    _onFoundLogic();
+                    this.tryDisconnect("securityRows");
                     break;
                 }
             }
         };
         if (this.getSecurityRows().length)
         {
-            _wasFoundLogic();
+            _onFoundLogic();
         }
         else
         {
@@ -228,7 +228,7 @@ export default class PositionsRowWidget extends WidgetBase
     /**
      * The cost basis and today's gain/loss nodes can unfortunately be loaded late, and even some can be loaded on time while others not. If one is loaded late, we set up a watcher on it.
      * Disconnects when the node is found.
-     * _wasFoundLogic only runs if mask is up.
+     * _onFoundLogic only runs if mask is up.
      * 
      * @param {Node} lateNode the node that is loading late
      * @param {Node} percentNode the node that holds the percent to base the mask on
@@ -236,7 +236,7 @@ export default class PositionsRowWidget extends WidgetBase
     watchLateNode(lateNode, percentNode)
     {
         const observerName = "latePositionsWatcher" + this.lateWatcherCounter++;
-        const _wasFoundLogic = () => {
+        const _onFoundLogic = () => {
             this.maskPositionNode(lateNode, stripToNumber(percentNode.textContent), toDollars);
         };
         const _watchLogic = (mutations) => {
@@ -244,8 +244,8 @@ export default class PositionsRowWidget extends WidgetBase
             {
                 if (this.isMaskOn && mutation.type === 'childList')
                 {
-                    _wasFoundLogic();
-                    WidgetBase.tryDisconnect(this.observers[observerName]);
+                    _onFoundLogic();
+                    this.tryDisconnect(observerName);
                     break;
                 }
             }

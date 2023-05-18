@@ -29,15 +29,12 @@ export default class WidgetController
      */
     loadWidgets(url)
     {
-      // console.log("loading widgets for url: ", url)
-        let matchingUrlFound = false;
         let upcomingWidgets = [];
         for (const className in this.classToUrlMap) // run through all classes in the classToUrlMap
         {
             const regex = this.classToUrlMap[className];
             if (regex.test(url))
             {
-                matchingUrlFound = true;
                 upcomingWidgets.push(this.classConstructorMap[className]); // push in the appropriate constructor by looking up the class obj from the class name in classConstructorMap (NB this avoids the use of eval)
             }
         }

@@ -26,7 +26,7 @@ export default class WidgetBase
     observers = { // whenever observers are added by the widget, ensure they are stored here so they can be disconnected later. Key is the string name of the observer, value is the observer itself.
     }
 
-    constructor(maskValue = 100, isMaskOn = false) 
+    constructor(maskValue = 100, isMaskOn = false) // ! each child should define its own constructor and call this.watchForCommonAncestor() after super.
     {
         this.maskValue = maskValue;
         this.isMaskOn = isMaskOn;
@@ -80,11 +80,7 @@ export default class WidgetBase
         {
             if (this.observers.hasOwnProperty(key))
             {
-                const observer = this.observers[key];
-                if (observer) // make sure it is not set to null
-                {
-                    WidgetBase.tryDisconnect(observer);
-                }
+                this.tryDisconnect(key);
             }
         }
     }
@@ -252,7 +248,7 @@ export default class WidgetBase
      */
     watchForCommonAncestor()
     {
-        const _wasFoundLogic = () => {
+        const _onFoundLogic = () => {
             this.activateWatchers();
         }
         const _watchLogic = (mutations) => {
@@ -261,15 +257,15 @@ export default class WidgetBase
                 if (mutation.addedNodes.length && (mutation.type === 'childList' || mutation.type === 'subtree')
                     && this.getCommonAncestorNode())
                 {
-                    _wasFoundLogic();
-                    WidgetBase.tryDisconnect(this.observers.commonAncestor);
+                    _onFoundLogic();
+                    this.tryDisconnect("commonAncestor");
                     break;
                 }
             }
         };
         if (this.getCommonAncestorNode()) // common ancestor already exists, so we don't need to watch for it
         {
-            _wasFoundLogic();
+            _onFoundLogic();
         }
         else // common ancestor does not exist, so we need to watch for it
         {
@@ -286,12 +282,18 @@ export default class WidgetBase
         return;
     }
 
-    static tryDisconnect(observer)
+    /**
+     * 
+     * @param {string} observerName
+     */
+    tryDisconnect(observerName)
     {
+        const observer = this.observers[observerName];
         if (observer instanceof MutationObserver)
         {
             observer.disconnect();
         }
+        this.observers[observerName] = null;
     }
 
     /**

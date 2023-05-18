@@ -250,7 +250,7 @@ export default class PanelTotalWidget extends WidgetBase
      */
     watchForTotalNode() 
     {
-        const _wasFoundLogic = () => {
+        const _onFoundLogic = () => {
             this.maskSwitch();
         };
         const _watchLogic = (mutations) => {
@@ -260,13 +260,13 @@ export default class PanelTotalWidget extends WidgetBase
                 && !this.graphHoverMutation()
                 && this.getTotalNode(mutation.addedNodes))
                 { 
-                    _wasFoundLogic();
+                    _onFoundLogic();
                 } 
             }
         };
         if (this.getTotalNode())
         {
-            _wasFoundLogic();
+            _onFoundLogic();
         }
         this.observers.totalObserver = WidgetBase.createObserver(this.getCommonAncestorNode(), _watchLogic);
     }
@@ -277,7 +277,7 @@ export default class PanelTotalWidget extends WidgetBase
      */
     watchForHighCharts()
     {
-        const _wasFoundLogic = () => {
+        const _onFoundLogic = () => {
             if (this.isMaskOn)
             {
                 this.maskGraphLabels();
@@ -289,13 +289,13 @@ export default class PanelTotalWidget extends WidgetBase
                 if ((mutation.addedNodes.length && (mutation.type === 'childList' || mutation.type === 'subtree'))
                 && this.getGraphNode(mutation.addedNodes)) // only proc if graph node is within the addedNodes
                 { 
-                    _wasFoundLogic();
+                    _onFoundLogic();
                 } 
             }
         };
         if (this.getGraphNode())
         {
-            _wasFoundLogic();
+            _onFoundLogic();
         }
         this.observers.graphObserver = WidgetBase.createObserver(this.getCommonAncestorNode(), _watchLogic);
     }
