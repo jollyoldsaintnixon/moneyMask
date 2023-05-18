@@ -65,6 +65,7 @@ document.addEventListener('DOMContentLoaded', function() {
     
             optionsData.forEach(optionData => {
                 const option = document.createElement('option');
+                option.classList.add('mask-option');
                 option.value = optionData.value;
                 option.textContent = optionData.text;
                 selectElement.appendChild(option);

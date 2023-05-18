@@ -1,8 +1,15 @@
+body {
+    display: flex;
+    flex-direction: column;
+}
+
 .banner {
-    color: blue;
+    color: black;
 }
 
 .toggle-button {
+    width: 110px;
+    height: 55px;
     padding: 10px 20px;
     font-size: 14px;
     cursor: pointer;
@@ -15,3 +22,6 @@
     color: white;
     border-color: #007bff;
 }
+
+/* .mask-option {
+} */

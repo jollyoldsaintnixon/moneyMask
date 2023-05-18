@@ -2,10 +2,10 @@
     display: none;
 } */
 
-.money-mask-clone {
+/* .money-mask-clone { */
     /* color: purple; */
-    font-weight: bolder;
-}
+    /* font-weight: bolder; */
+/* } */
 
 .money-mask-blurred {
     filter: blur(6px);
