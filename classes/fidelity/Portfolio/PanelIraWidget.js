@@ -9,10 +9,11 @@ import WidgetBase from "../../WidgetBase";
  */
 export default class PanelIraWidget extends WidgetBase
 {
-    targetNodeSelector = '.contribution__item__progress__data > span:nth-child(2)';
-    targetCommonAncestorSelector = 'ira-contribution'; // custom element (not a class)
+    commonAncestorSelector = 'ira-contribution'; // custom element (not a class)
+    maxLimitSelector = '.contribution__item__progress__data > span:nth-child(2)';
     remainderSelector = '.contribution__item__year > span:nth-child(2)'; // the amount you can still contribute
     contributedSelector = '.contribution__item__progress__data > span:first-child'; // the amount you have contributed so far
+    maxLimitNode = null;
     remainderNode = null;
     contributedNode = null;
 
@@ -21,37 +22,25 @@ export default class PanelIraWidget extends WidgetBase
     constructor(maskValue = 100, isMaskOn = false) 
     {
         super(maskValue, isMaskOn);
-        this.maskUpOrDownSwitch(); // I couldn't figure out how to call this in OnlySecondaryWidgetBase constructor. The value of catalystSelector was that of OnlySecondaryWidgetBase, not PanelTotalWidget. Weird.
-    }
-
-    /**
-     * Determines the action to take based on the current mask state. Overwritten from
-     * WidgetBase so that we can remove cents from the currency string.
-     */
-    maskUpOrDownSwitch()
-    {
-        if (this.isMaskOn)
-        {
-            WidgetBase.maskUp(this.getTargetNodes(), toDollars(this.maskValue, false) + " limit");
-            this.maskSecondaryEffects();
-        }
-        else
-        {
-            WidgetBase.unmask(this.getTargetNodes());
-            this.resetSecondaryEffects();
-        }
+        this.watchForCommonAncestor();
     }
 
     /************************ MASKERS **********************/
 
-    maskSecondaryEffects()
+    putMaskUp()
     {
+        this.maskMaxLimit();
         this.maskRemainder();
         this.maskContributed();
         if (!this.limitTweaked)
         {
             this.tweakMaskedLimit();
         }
+    }
+
+    maskMaxLimit()
+    {
+        WidgetBase.maskUp(this.getMaxLimitNode(), toDollars(this.maskValue, false) + " limit");
     }
 
     maskRemainder()
@@ -72,62 +61,57 @@ export default class PanelIraWidget extends WidgetBase
         }
     }
 
-    /**
-     * Adds "limit" to the limit node clone. Should only happen once.
-     */
-    tweakMaskedLimit()
-    {
-        const limitNode = this.getLimitNode();
-        if (limitNode)
-        {
-            limitNode.nextSibling.textContent += " limit";
-            this.limitTweaked = true; // set the flag so that we don't do this again
-        }
-    }
-
     /************************ RESETTERS **********************/
 
-    resetSecondaryEffects()
+    resetNodes()
     {
+        this.resetMaxLimit();
         this.resetRemainder();
         this.resetContributed();
     }
 
+    resetMaxLimit()
+    {
+        WidgetBase.unmask(this.getMaxLimitNode());
+    }
+
     resetRemainder()
     {
-        const remainderNode = this.getRemainderNode();
-        if (remainderNode)
-        {
-            WidgetBase.unmask(remainderNode);
-        }
+        WidgetBase.unmask(this.getRemainderNode());
     }
 
     resetContributed()
     {
-        const contributedNode = this.getContributedNode();
-        if (contributedNode)
-        {
-            WidgetBase.unmask(contributedNode);
-        }
+        WidgetBase.unmask(this.getContributedNode());
     }
 
     /************************ GETTERS **********************/
 
+    getMaxLimitNode(parentNodes = this.getCommonAncestorNode())
+    {
+        if (!WidgetBase.isConnected(this.maxLimitNode))
+        {
+            this.maxLimitNode = WidgetBase.getNodes(parentNodes, this.maxLimitSelector);
+        }
+        return this.maxLimitNode;
+    }
+
     getRemainderNode()
     {
-        this.remainderNode = this.remainderNode || document.querySelector(this.remainderSelector + WidgetBase.notCloneSelector);
+        if (!WidgetBase.isConnected(this.remainderNode))
+        {
+            this.remainderNode = WidgetBase.getNodes(this.getCommonAncestorNode(), this.remainderSelector);
+        }
         return this.remainderNode;
     }
 
     getContributedNode()
     {
-        this.contributedNode = this.contributedNode || document.querySelector(this.contributedSelector + WidgetBase.notCloneSelector);
+        if (!WidgetBase.isConnected(this.contributedNode))
+        {
+            this.contributedNode = WidgetBase.getNodes(this.getCommonAncestorNode(), this.contributedSelector);
+        }
         return this.contributedNode;
-    }
-
-    getLimitNode()
-    {
-        return this.getTargetNodes()[0]; // the limit node is the target node
     }
 
     getRemainderValue()
@@ -138,7 +122,55 @@ export default class PanelIraWidget extends WidgetBase
             return stripToNumber(remainderText);
         }
         // mask is up
-        const limitText = this.getLimitNode().textContent;
+        const limitText = this.getMaxLimitNode().textContent;
         return this.getMaskedProportion(limitText, remainderText);
+    }
+
+    /************************ WATCHERS **********************/
+
+    activateWatchers()
+    {
+        this.watchForMaxLimit();
+    }
+
+    /**
+     * Does not disconnect
+     */ 
+    watchForMaxLimit()
+    {
+        const _wasFoundLogic = () => {
+            this.maskSwitch();
+        };
+        const _watchLogic = (mutations) => {
+            for (const mutation of mutations)
+            {
+                if ((mutation.type === 'childList' && mutation.addedNodes.length)
+                    && this.getMaxLimitNode(mutation.addedNodes))
+                {
+                    _wasFoundLogic();
+                    break;
+                }
+            }
+        };
+        if (this.getMaxLimitNode())
+        {
+            _wasFoundLogic();
+        }
+        this.observers.iraMaxLimit = WidgetBase.createObserver(this.getCommonAncestorNode(), _watchLogic);
+    }
+
+    /************************ HELPERS **********************/
+
+    /**
+     * Adds "limit" to the limit node clone. Should only happen once.
+     */
+    tweakMaskedLimit()
+    {
+        const limitNode = this.getMaxLimitNode();
+        if (limitNode)
+        {
+            limitNode.nextSibling.textContent += " limit";
+            this.limitTweaked = true; // set the flag so that we don't do this again
+        }
     }
 }

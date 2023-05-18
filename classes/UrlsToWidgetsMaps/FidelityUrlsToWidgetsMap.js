@@ -11,9 +11,9 @@ export const classToUrlMap = {
     PanelTotalWidget: new RegExp("http[s]?:\/\/.+fidelity\.com\/.*portfolio\/summary"),
     PanelIraWidget: new RegExp("http[s]?:\/\/.+fidelity\.com\/.*portfolio\/summary"),
     PositionsRowWidget: new RegExp("http[s]?:\/\/.+fidelity\.com\/.*portfolio\/positions"),
-    TradePopOutWidget: new RegExp("http[s]?:\/\/.+fidelity\.com\/.*portfolio\/(summary|positions)"),
-    BalanceSheetWidget: new RegExp("http[s]?:\/\/.+fidelity\.com\/.*portfolio\/portfolio#balances"),
-    BalanceSidebarWidget: new RegExp("http[s]?:\/\/.+fidelity\.com\/.*portfolio\/portfolio#balances"),
+    // TradePopOutWidget: new RegExp("http[s]?:\/\/.+fidelity\.com\/.*portfolio\/(summary|positions)"),
+    // BalanceSheetWidget: new RegExp("http[s]?:\/\/.+fidelity\.com\/.*portfolio\/portfolio#balances"),
+    // BalanceSidebarWidget: new RegExp("http[s]?:\/\/.+fidelity\.com\/.*portfolio\/portfolio#balances"),
 }
 
 export const classConstructorMap = {
