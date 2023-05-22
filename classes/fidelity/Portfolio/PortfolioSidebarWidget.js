@@ -8,13 +8,14 @@ import WidgetBase from "../../WidgetBase";
 export default class PortfolioSidebarWidget extends WidgetBase 
 {
     commonAncestorSelector = '.acct-selector__container';
+
     accountTotalsSelector = '[class$="_acct-balance"] > span:nth-child(2)';
     accountTotalNodes = arrayToList([]);
-
     portfolioTotalSelector = '.acct-selector__all-accounts > div:nth-child(2) > span:nth-child(2)';
     portfolioTotalNode = null; // node that has the total of totals. I memoize it since it is a single node and easy to track.
     groupTotalSelector = '.acct-selector__group-balance'; // each "group" of accounts (ie retirement, custodial, etc) has a total
     groupTotalNodes = arrayToList([]);
+    groupAncestorDepth = 10; // how many levels up to look for the common ancestor.
 
     constructor(maskValue = 100, isMaskOn = false) 
     {
@@ -59,7 +60,7 @@ export default class PortfolioSidebarWidget extends WidgetBase
         const _getCommonGroupAncestor = (node) =>
         {
             let ancestor = node;
-            for (let i=0; i<10; i++)
+            for (let i=0; i<this.groupAncestorDepth; i++)
             {
                 if (!ancestor.parentElement)
                 {
@@ -87,7 +88,7 @@ export default class PortfolioSidebarWidget extends WidgetBase
      */
     maskGains(accountTotalNode)
     {
-        const gainNode = PortfolioSidebarWidget.getGainNode(accountTotalNode);
+        const gainNode = this.getGainNode(accountTotalNode);
         // ensure that there is a gain node for this account
         if (!gainNode) return;
         const proportion = this.getMaskedProportion(accountTotalNode.textContent, gainNode.textContent);
@@ -97,7 +98,6 @@ export default class PortfolioSidebarWidget extends WidgetBase
     /**
      * Mask the total value for all accounts. save original value first.
      * Makes sure you don't save a masked value as the original value
-     * @param {float} total
      */ 
     maskPortfolioTotal()
     {
@@ -127,7 +127,7 @@ export default class PortfolioSidebarWidget extends WidgetBase
 
     resetGains(accountTotalNode)
     {
-        const gainNode = PortfolioSidebarWidget.getGainNode(accountTotalNode);
+        const gainNode = this.getGainNode(accountTotalNode);
         if (!gainNode) return;
         WidgetBase.unmask(gainNode);
     }
@@ -169,15 +169,16 @@ export default class PortfolioSidebarWidget extends WidgetBase
      * @param {Node} accountTotalNode 
      * @returns Node|null
      */
-    static getGainNode(accountTotalNode)
+    getGainNode(accountTotalNode)
     {
         let gainNode = null;
         try
         {
             gainNode = accountTotalNode.parentElement.nextElementSibling.childNodes[1];
         }
-        catch (error)
+        catch (error) 
         {
+            return null;
         }
         return gainNode
     }
