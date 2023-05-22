@@ -104,3 +104,4 @@ Testing is done with Jest. To test, run `npm run test`.
 ## Bugs & Caveats
 * Sometimes "cuts out" after period of inactivity
 * Still very much a work in progress- only works on certain parts of the Fidelity site.
+* Please do no try to make a trade will the mask is up. The extension should disable the ability to do so on trade pages where it is running, but just in case it fails please make sure you take the mask down first. I am sure you want to see the real values before making any trade.
