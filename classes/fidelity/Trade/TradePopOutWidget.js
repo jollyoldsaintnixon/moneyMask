@@ -10,19 +10,22 @@ import WidgetBase from "../../WidgetBase.js";
  * We also need to mask the margin buying power, the "available without margin impact" nodes, and the "amount owned" nodes. 
  * 
  * The margin buying power will be set to 150% of the non-margin buying power (regardless of the actual ratio), and the "available without margin impact" will be set based on the ratio to the non-margin buying power.
- * 
+ * .form-row-content.eq-ticket__available-funds
  * The "amount owned" nodes will be trickier to compute- we may just blur this. Furthermore, it is only rendered conditionally- we will need to set up a listener.
  * 
  * We do not need to disable any buttons since this widget only links to the trade preview. */
 export default class TradePopOutWidget extends WidgetBase 
 {
-    // commonAncestorSelector = "#eq-ticket__account-balance";
     commonAncestorSelector = "float_trade_apps";
+
+    buyingPowerParentSelector = '.form-row-content.eq-ticket__available-funds';
+    buyingPowerParent = null;
+    buyingPowerSelector = "#eq-ticket__account-balance"
+
     marginSelector = "#eq-ticket__account-balance > div:nth-child(1) > div:nth-child(2)"; // margin buying power
     margin = null;
     nonMarginSelector = "#eq-ticket__account-balance > div:nth-child(2) > div:nth-child(2)"; // non-margin buying power
     nonMargin = null;
-    // marginBuyingPowerSelector = "#eq-ticket__account-balance > div:nth-child(1) > div:nth-child(2)";
     withoutMarginImpactSelector = "#eq-ticket__account-balance > div:nth-child(3) > div:nth-child(2)";
     withoutMarginImpact = null;
 
@@ -30,7 +33,6 @@ export default class TradePopOutWidget extends WidgetBase
     ownedAmountParentSelector = "#eqt-mts-stock-quatity" // it's a custom element
     ownedAmountParent = null;
 
-    // popUpSelector = "float_trade_apps" // it's a custom element
     popUpNode = null;
 
     previewOrderButtonSelector = ".pvd3-button-root.pvd-button--full-width.pvd-button--primary:first-child"; // this retrieves two buttons; use only the first one.
@@ -253,7 +255,7 @@ export default class TradePopOutWidget extends WidgetBase
 
     getNonMargin()
     {
-        if (!this.nonMargin || !this.nonMargin.isConnected)
+        if (!WidgetBase.isConnected(this.nonMargin))
         {
             this.nonMargin = WidgetBase.getNodes(this.getPopUpNode(), this.nonMarginSelector);
         }
@@ -262,26 +264,41 @@ export default class TradePopOutWidget extends WidgetBase
 
     getWithoutMarginImpact()
     {
-        if (!this.withoutMarginImpact || !this.withoutMarginImpact.isConnected)
+        if (!WidgetBase.isConnected(this.withoutMarginImpact))
         {
             this.withoutMarginImpact = WidgetBase.getNodes(this.getPopUpNode(), this.withoutMarginImpactSelector);
         }
         return this.withoutMarginImpact;
     }
 
-    // getWithMargin()
-    // {
-    //     return this.getTargetNodes()[0];
-    // }
-
     getPopUpNode()
     {
         return this.commonAncestorNode; // it may return null, that is fine. we only want to set this in the pop up observer.
     }
 
+    getBuyingPowerParent(parentNodes = this.getCommonAncestorNode())
+    {
+        if (!WidgetBase.isConnected(this.buyingPowerParent))
+        {
+
+            this.buyingPowerParent = WidgetBase.getNodes(parentNodes, this.buyingPowerParentSelector);
+        }
+        return this.buyingPowerParent;
+    }
+
+    /**
+     * Does not memoize
+     * @param {Node|NodeList} parentNodes 
+     * @returns 
+     */
+    getBuyingPowerBlock(parentNodes = this.getBuyingPowerParent())
+    {
+        return WidgetBase.getNodes(parentNodes, this.buyingPowerSelector);
+    }
+
     getPlaceOrderButton()
     {
-        if (!this.placeOrderButton || !this.placeOrderButton.isConnected)
+        if (!WidgetBase.isConnected(this.placeOrderButton))
         {
             this.placeOrderButton = WidgetBase.getNodes(this.getPopUpNode(), this.placeOrderButtonSelector);
         }
@@ -292,15 +309,50 @@ export default class TradePopOutWidget extends WidgetBase
 
     activateWatchers()
     {
-        this.watchForMargin(); // watch for the margin to appear
+        this.watchForBuyingPower(); // watch for the margin to appear
         this.watchForOwnedAmount(); // connect the owned amount observer if the pop up is added
         this.watchForSubmit(); // watch for the submit button so we can add a click listener when found
     }
 
     /**
+     * Watches for the block that has the various buying powers
      * Disconnects when found
      */
-    watchForMargin()
+    watchForBuyingPower()
+    {
+        const _onFoundLogic = () => {
+            this.maskSwitch();
+            this.watchForBuyingPowerSwap();
+        };
+        const _watchLogic = (mutations) => {
+            for (const mutation of mutations)
+            {
+                if (mutation.type === 'childList' && mutation.addedNodes.length
+                    && this.getBuyingPowerParent())
+                {
+                    _onFoundLogic();
+                    this.tryDisconnect("buyingPowerParent")
+                    break;
+                }
+            }
+        };
+        if (this.getBuyingPowerParent())
+        {
+            _onFoundLogic();
+        }
+        else
+        {
+            this.observers.buyingPowerParent = WidgetBase.createObserver(this.getCommonAncestorNode(), _watchLogic);
+        }
+    }
+
+    /**
+     * Watch the for buying power swaps (ie when the user switches between brokerage accounts). Procs whenever a serious of mutations adds any amount of nodes to the buying power block (and then breaks out of that series)
+     * 
+     * Does not run immediately if nodes found.
+     * Does not disconnect.
+     */
+    watchForBuyingPowerSwap()
     {
         const _onFoundLogic = () => {
             this.maskSwitch();
@@ -308,23 +360,17 @@ export default class TradePopOutWidget extends WidgetBase
         const _watchLogic = (mutations) => {
             for (const mutation of mutations)
             {
-                if (mutation.type === 'childList' && mutation.addedNodes.length
-                    && this.getWithMargin(mutation.addedNodes))
+                if (((mutation.type === 'childList' && mutation.addedNodes.length) || mutation.type === 'characterData')
+                    && this.buyingBlockReady() // check not only if the block exists, but also if the totals are loaded
+                    )
                 {
                     _onFoundLogic();
-                    this.tryDisconnect("margin")
                     break;
                 }
             }
         };
-        if (this.getWithMargin())
-        {
-            _onFoundLogic();
-        }
-        else
-        {
-            this.observers.margin = WidgetBase.createObserver(this.getCommonAncestorNode(), _watchLogic);
-        }
+        const observerConfig = { ...WidgetBase.observerConfig, ...{ characterData: true }};
+        this.observers.buyingPowerSwap = WidgetBase.createObserver(this.getBuyingPowerParent(), _watchLogic, false, 1, observerConfig);
     }
 
     /**
@@ -509,5 +555,14 @@ export default class TradePopOutWidget extends WidgetBase
         clone.childNodes[0].style.fontStyle = "italic";
         clone.childNodes[0].textContent = "Unmask to place order";
         return clone;
+    }
+
+    /**
+     * 
+     * @returns boolean true if the buying power block if found and if the first buying power type within it has some text content
+     */
+    buyingBlockReady()
+    {
+        return this.getBuyingPowerBlock() && this.getWithMargin().textContent.trim().length
     }
 }
