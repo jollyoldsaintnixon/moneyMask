@@ -1,9 +1,9 @@
 import WidgetBase from "../../WidgetBase";
 import { 
-    dollarsToFloat,
     stripToNumber, 
     toDollars,
     toGainDollars,
+    toShareQuantity,
     arrayToList,
 } from "../../helpers";
 
@@ -12,9 +12,11 @@ import {
  */
 export default class PositionsRowWidget extends WidgetBase
 {
+    commonAncestorSelector = ".ag-body-viewport"
+    distalAncestorSelector = ".positions-content-container"; // this is the ancestor that is removed when the user switches accounts. We watch for this to re-mask.
+    distalAncestorNode = null;
     securityRowsSelector = ".ag-center-cols-container > div.ag-row:not(.ag-row-first, .posweb-row-spacer)"; // this will return a series of security rows. Different nodes within each row will be masked based on the percent of the total account represented by each security.
     securityRowNodes = arrayToList([]); // this will be a list of nodes that represent each security row
-    commonAncestorSelector = ".ag-body-viewport"
     percentOfAccountSelector = ".posweb-cell-account_percent > div:first-child > span:first-child"; // this is the percent of the account represented by the security
     percentTotalGainLossSelector = ".posweb-cell-total_gl_percent > div:first-child > span:first-child"; // this is the percent for total gain/loss for the security
     percentTodaysGainLossSelector = ".posweb-cell-today_gl_percent > div:first-child > span:first-child"; // this is the percent for today's gain/loss for the security
@@ -49,7 +51,7 @@ export default class PositionsRowWidget extends WidgetBase
             if (this.isAccountTotalRow(securityNode)) // we also want the very last node to be masked as an account total row
             {
                 this.maskAccountTotalRow(securityNode);
-                grandTotalMaskValue += dollarsToFloat(this.maskValue);
+                grandTotalMaskValue += stripToNumber(this.maskValue);
             } 
             else
             {
@@ -62,24 +64,30 @@ export default class PositionsRowWidget extends WidgetBase
     maskTotalGainLoss(securityNode)
     {
         const totalGainLossNode = securityNode.querySelector(this.totalGainLossSelector);
-        const percentNode = securityNode.querySelector(this.percentTotalGainLossSelector);
-        if (this.validNodes(totalGainLossNode, percentNode))
+        // get percent nodes
+        const accountPercentNode = securityNode.querySelector(this.percentOfAccountSelector);
+        const totalGainPercentNode = securityNode.querySelector(this.percentTotalGainLossSelector);
+        if (this.validNodes(totalGainLossNode, totalGainPercentNode))
         {
-            this.maskPositionNode(totalGainLossNode, stripToNumber(percentNode.textContent), toGainDollars);
+            const combinedPercent = this.calcMaskedPercent(accountPercentNode, totalGainPercentNode);
+            this.maskPositionNode(totalGainLossNode, combinedPercent, toGainDollars);
         }
     }
 
     maskTodaysGainLoss(securityNode)
     {
         const todaysGainLossNode = securityNode.querySelector(this.todaysGainLossSelector);
-        const percentNode = securityNode.querySelector(this.percentTodaysGainLossSelector);
-        if (this.isLateNode(todaysGainLossNode, percentNode))
+        // get percent nodes
+        const accountPercentNode = securityNode.querySelector(this.percentOfAccountSelector);
+        const todaysGainPercentNode = securityNode.querySelector(this.percentTodaysGainLossSelector);
+        if (this.isLateNode(todaysGainLossNode, todaysGainPercentNode))
         {
-            this.watchLateNode(todaysGainLossNode, percentNode);
+            this.watchLateNode(todaysGainLossNode, accountPercentNode, todaysGainPercentNode);
         }
-        else if (this.validNodes(todaysGainLossNode, percentNode))
+        else if (this.validNodes(todaysGainLossNode, todaysGainPercentNode))
         {
-            this.maskPositionNode(todaysGainLossNode, stripToNumber(percentNode.textContent), toGainDollars);
+            const combinedPercent = this.calcMaskedPercent(accountPercentNode, todaysGainPercentNode);
+            this.maskPositionNode(todaysGainLossNode, combinedPercent, toGainDollars);
         }
     }
 
@@ -94,10 +102,10 @@ export default class PositionsRowWidget extends WidgetBase
 
     maskSecurityRow(securityNode)
     {
-        const percentNode = securityNode.querySelector(this.percentOfAccountSelector); // these next three masks are all based on this percent
-        this.maskCurrentValue(securityNode, percentNode);
-        this.maskQuantity(securityNode, percentNode);
-        this.maskCostBasisTotal(securityNode, percentNode);
+        const accountPercentNode = securityNode.querySelector(this.percentOfAccountSelector); // these next three masks are all based on this percent
+        this.maskCurrentValue(securityNode, accountPercentNode);
+        this.maskQuantity(securityNode, accountPercentNode);
+        this.maskCostBasisTotal(securityNode, accountPercentNode);
     }
 
     maskCurrentValue(securityNode, percentNode)
@@ -106,7 +114,8 @@ export default class PositionsRowWidget extends WidgetBase
         percentNode = percentNode ?? securityNode.querySelector(this.percentOfAccountSelector);
         if (this.validNodes(currentValueNode, percentNode))
         {
-            this.maskPositionNode(currentValueNode, stripToNumber(percentNode.textContent), toDollars);
+            const percent = this.calcMaskedPercent(percentNode);
+            this.maskPositionNode(currentValueNode, percent, toDollars);
         }
     }
 
@@ -116,7 +125,8 @@ export default class PositionsRowWidget extends WidgetBase
         const quantityNode = securityNode.querySelector(this.quantitySelector);
         if (this.validNodes(quantityNode, percentNode))
         {
-            this.maskPositionNode(quantityNode, stripToNumber(percentNode.textContent));
+            const percent = this.calcMaskedPercent(percentNode);
+            this.maskPositionNode(quantityNode, percent, toShareQuantity);
         }
     }
 
@@ -130,19 +140,20 @@ export default class PositionsRowWidget extends WidgetBase
         }
         else if (this.validNodes(costBasisNode, percentNode))
         {
-            this.maskPositionNode(costBasisNode, stripToNumber(percentNode.textContent), toDollars);
+            const percent = this.calcMaskedPercent(percentNode);
+            this.maskPositionNode(costBasisNode, percent, toDollars);
         }
     }
 
     /**
      * 
      * @param {Node} node to be masked
-     * @param {float} percent percent to base mask on
-     * @param {function} dollarFunc toDollars, toGainDollars, etc. defaults to returning an unmodified value.
+     * @param {float} percent percent to base mask on (should be in decimal form, ie already should be divided by 100)
+     * @param {function} dollarFunc toDollars, toGainDollars, etc. defaults to returning the unmodified value.
      */
     maskPositionNode(node, percent, dollarFunc = (value) => value)
     {
-        const maskedValue = dollarFunc(this.maskValue * percent / 100);
+        const maskedValue = dollarFunc(this.maskValue * percent);
         WidgetBase.maskUp(node, maskedValue);
     }
 
@@ -186,11 +197,21 @@ export default class PositionsRowWidget extends WidgetBase
         return currentValueNode;
     }
 
+    getDistalAncestorNode()
+    {
+        if (!WidgetBase.isConnected(this.distalAncestorNode))
+        {
+            this.distalAncestorNode = WidgetBase.getNodes(document, this.distalAncestorSelector);
+        }
+        return this.distalAncestorNode;
+    }
+
     /******************** WATCHERS **********************/
     
     activateWatchers()
     {
         this.watchForSecurityRows();
+        this.watchForAccountSwap();
     }
 
     /**
@@ -226,6 +247,38 @@ export default class PositionsRowWidget extends WidgetBase
     }
 
     /**
+     * When the user switches from account to account, a history update is not triggered. We need to therefore watch for the account swap and re-watch for commonAncestor.
+     * Tries to run immediately.
+     * Does not disconnect. Will short circuit if observer already exists.
+     */
+    watchForAccountSwap()
+    {
+        if (!this.observers.accountSwap)
+        {
+            const _onRemovedLogic = () => {
+                this.watchForCommonAncestor();
+            };
+            const _watchLogic = (mutations) => {
+                for (const mutation of mutations) 
+                {
+                    if (mutation.removedNodes.length && !WidgetBase.isConnected(this.getCommonAncestorNode()))
+                    {
+                        _onRemovedLogic();
+                        this.tryDisconnect("accountSwap")
+                        break;
+                    }
+                }
+            };
+            if (!WidgetBase.isConnected(this.getCommonAncestorNode())) // common ancestor was already removed
+            {
+                _onRemovedLogic();
+            }
+                this.observers.accountSwap = WidgetBase.createObserver(this.getDistalAncestorNode(), _watchLogic);
+        }
+        // }
+    }
+
+    /**
      * The cost basis and today's gain/loss nodes can unfortunately be loaded late, and even some can be loaded on time while others not. If one is loaded late, we set up a watcher on it.
      * Disconnects when the node is found.
      * _onFoundLogic only runs if mask is up.
@@ -233,11 +286,12 @@ export default class PositionsRowWidget extends WidgetBase
      * @param {Node} lateNode the node that is loading late
      * @param {Node} percentNode the node that holds the percent to base the mask on
      */
-    watchLateNode(lateNode, percentNode)
+    watchLateNode(lateNode, percentNode, changePercentNode = null)
     {
         const observerName = "latePositionsWatcher" + this.lateWatcherCounter++;
         const _onFoundLogic = () => {
-            this.maskPositionNode(lateNode, stripToNumber(percentNode.textContent), toDollars);
+            const percent = this.calcMaskedPercent(percentNode, changePercentNode);
+            this.maskPositionNode(lateNode, percent, toDollars);
         };
         const _watchLogic = (mutations) => {
             for (const mutation of mutations)
@@ -280,5 +334,21 @@ export default class PositionsRowWidget extends WidgetBase
     isLateNode(lateNode, percentNode)
     {
         return (lateNode && !lateNode.textContent.length && percentNode && percentNode.textContent.length);
+    }
+
+    /**
+     * Calculate the masked percent based by combining the percent of account a security makes up with the change percent. If the change percent is not found, base the percent solely on the percent of account.
+     * @param {Node} accountPercentNode the node holding the percent of account
+     * @param {Node} changePercentNode the node holding the change percent
+     * @returns float;
+     */
+    calcMaskedPercent(accountPercentNode, changePercentNode)
+    {
+        const _getPercent = (node) => { // default the to 100% if not found
+            return (node && node.textContent.trim().length) 
+            ? stripToNumber(node.textContent) / 100
+            : 1;
+        }
+        return _getPercent(accountPercentNode) * _getPercent(changePercentNode);
     }
 }

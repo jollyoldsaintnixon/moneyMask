@@ -78,13 +78,12 @@ export function toGraphDollars(value)
 }
 
 /**
- * 
- * @param {string} dollars 
- * @returns 
+ * Cut a number off at four decimal points
+ * @param {float|int} num 
  */
-export function dollarsToFloat(dollars)
+export function toShareQuantity(num) 
 {
-    return parseFloat(dollars.replace(/[^0-9.-]+/g,""));
+    return Math.floor(num * 1e4) / 1e4;
 }
 
 /**

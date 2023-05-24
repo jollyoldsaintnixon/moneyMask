@@ -1,5 +1,5 @@
 import {
-    dollarsToFloat,
+    stripToNumber,
     applyToSingleElemOrList
  } from "./helpers";
 
@@ -336,7 +336,7 @@ export default class WidgetBase
      */
     getMaskedProportion(totalDollars, proportionDollars)
     {
-        const proportion = dollarsToFloat(proportionDollars) / dollarsToFloat(totalDollars);
+        const proportion = stripToNumber(proportionDollars) / stripToNumber(totalDollars);
         return this.maskValue * proportion;
     }
 
@@ -410,10 +410,10 @@ export default class WidgetBase
     }
 
     /**
-     * Takes in a single node or a list of nodes. If any node is no longer connected to the DOM, returns false.
+     * Takes in a single node or a list of nodes. If any node is no longer connected to the DOM, returns false. Also returns false if the node is null or the list is empty.
      * NB: We don't call applyToSingleElemOrList here because it is more efficient to do a modified "some" loop
      * @param {Node|Nodelist} nodes
-     * @returns {boolean} whether the node or all nodes in list is/are connected to the DOM 
+     * @returns {boolean} whether the node or all nodes in list is/are connected to the DOM
      */
     static isConnected(nodes)
     {
