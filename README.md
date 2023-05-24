@@ -69,8 +69,9 @@ Widgets inherit from the WidgetBase class.
 1. Determine the nodes that will be masked. Add all of their selector strings as intstance properties and write their "getters".
 2. Determine the common ancestor. This is the node that "wraps" the widget. Add the corresponding selector string under the instance property `commonAncestorSelector`.
 3. Overwrite the `activateWatchers()` instance method. This function should initiate any observers that proc when the desired nodes are found.
-4. Overwrite a constructor method that calls `this.watchForCommonAncestor()` after the call to `super()`.
+4. Overwrite a constructor method that calls `this.watchForCommonAncestor()` after the call to `super()`
 5. Overwrite the `putMaskUp()` and `resetNodes()` instance methods. These mask and unmask the nodes respectively. Create a masking and reset function for each type of node identified in step one.
+6. Add the widget to the mapping objects for the domain(s) it will run on.
 
 ## Repo Architecture
 The extension is almost entirely written in Node. 
