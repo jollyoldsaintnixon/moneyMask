@@ -281,6 +281,7 @@ export default class PanelTotalWidget extends WidgetBase
             if (this.isMaskOn)
             {
                 this.maskGraphLabels();
+                this.initHighChartsListener();
             }
         };
         const _watchLogic = (mutations) => {
