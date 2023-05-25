@@ -1,11 +1,11 @@
-import WidgetBase from "../../WidgetBase";
+import WidgetBase from "../../../WidgetBase";
 import { 
     stripToNumber, 
     toDollars,
     toGainDollars,
     toShareQuantity,
     arrayToList,
-} from "../../helpers";
+} from "../../../helpers";
 
 /**
  * This class represents rows of securities found under the positions tab within the portfolio page.

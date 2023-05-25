@@ -1,8 +1,8 @@
 import { 
     stripToNumber,
     toDollars,
- } from "../../helpers";
-import WidgetBase from "../../WidgetBase";
+ } from "../../../helpers";
+import WidgetBase from "../../../WidgetBase";
 
 /**
  * This is a panel widget that shows how much the user can contribute to their IRA.

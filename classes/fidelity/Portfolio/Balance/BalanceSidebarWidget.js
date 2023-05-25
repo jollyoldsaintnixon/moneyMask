@@ -1,6 +1,6 @@
-import { toGainDollars } from "../../helpers.js";
-import WidgetBase from "../../WidgetBase";
-import PortfolioSidebarWidget from "./PortfolioSidebarWidget";
+import { toGainDollars } from "../../../helpers.js";
+import WidgetBase from "../../../WidgetBase.js";
+import PortfolioSidebarWidget from "../PortfolioSidebarWidget.js";
 
 /**
  * This class is exactly like the PortfolioSidebarWidget class, except the nodes have different selectors

@@ -2,8 +2,8 @@ import {
     arrayToList,
     toDollars,
     toGainDollars
- } from "../../helpers.js";
-import WidgetBase from "../../WidgetBase.js";
+ } from "../../../helpers.js";
+import WidgetBase from "../../../WidgetBase.js";
 
 /**
  * This class represents the account balance tab within the portfolio
@@ -169,7 +169,7 @@ export default class BalanceSheetWidget extends WidgetBase
         }
         else // only activate watcher if nodes do not already exist
         {
-            this.observer.accountTotals = WidgetBase.createObserver(this.getCommonAncestorNode(), _watchLogic);
+            this.observers.accountTotals = WidgetBase.createObserver(this.getCommonAncestorNode(), _watchLogic);
         }
     }
 }

@@ -3,8 +3,8 @@ import {
     toGraphDollars,
     toGainDollars,
     arrayToList
-} from "../../helpers";
-import WidgetBase from "../../WidgetBase";
+} from "../../../helpers";
+import WidgetBase from "../../../WidgetBase";
 
 /**
  * This class targets a particular "square" in the summary panel that shows 
@@ -12,7 +12,7 @@ import WidgetBase from "../../WidgetBase";
  * are determined by changes in a node outside of its scope.
  * TODO: I need to add a listener that updates the graph labels whenever one of the four graphs is first clicked. They do not load until clicked the first time, and there is a delay.
  */
-export default class PanelTotalWidget extends WidgetBase 
+export default class PanelGraphWidget extends WidgetBase 
 {
     totalSelector = '.total-balance__value'; // account or portfolio total depending on whether on a specific account page
     commonAncestorSelector = '.balance-overtime-card-container.helios-override';

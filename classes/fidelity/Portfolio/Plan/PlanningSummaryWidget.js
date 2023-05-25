@@ -1,8 +1,8 @@
-import WidgetBase from "../../WidgetBase";
+import WidgetBase from "../../../WidgetBase";
 import { 
     stripToNumber,
     toDollars,
-} from "../../helpers";
+} from "../../../helpers";
 
 export default class PlanningSummaryWidget extends WidgetBase
 {

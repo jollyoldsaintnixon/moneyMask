@@ -12,7 +12,7 @@ export default class PortfolioSidebarWidget extends WidgetBase
     accountTotalsSelector = '[class$="_acct-balance"] > span:nth-child(2)';
     accountTotalNodes = arrayToList([]);
     portfolioTotalSelector = '.acct-selector__all-accounts > div:nth-child(2) > span:nth-child(2)';
-    portfolioTotalNode = null; // node that has the total of totals. I memoize it since it is a single node and easy to track.
+portfolioTotalNode = null; // node that has the total of totals. I memoize it since it is a single node and easy to track.
     groupTotalSelector = '.acct-selector__group-balance'; // each "group" of accounts (ie retirement, custodial, etc) has a total
     groupTotalNodes = arrayToList([]);
     groupAncestorDepth = 10; // how many levels up to look for the common ancestor.
