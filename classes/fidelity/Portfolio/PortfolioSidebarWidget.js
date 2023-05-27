@@ -3,7 +3,7 @@ import {
     toDollars, 
     toGainDollars,
 } from "../../helpers";
-import WidgetBase from "../../WidgetBase";
+import WidgetBase from "../../Base/WidgetBase";
 
 export default class PortfolioSidebarWidget extends WidgetBase 
 {

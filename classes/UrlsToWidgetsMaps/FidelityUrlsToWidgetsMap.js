@@ -1,11 +1,11 @@
-import PanelIraWidget from "../fidelity/Portfolio/PanelIraWidget";
-import PanelGraphWidget from "../fidelity/Portfolio/PanelGraphWidget";
-import PositionsRowWidget from "../fidelity/Portfolio/PositionsRowWidget";
+import PanelIraWidget from "../fidelity/Portfolio/Summary/PanelIraWidget";
+import PanelGraphWidget from "../fidelity/Portfolio/Summary/PanelGraphWidget";
+import PositionsRowWidget from "../fidelity/Portfolio/Positions/PositionsRowWidget";
 import PortfolioSidebarWidget from "../fidelity/Portfolio/PortfolioSidebarWidget";
 import TradePopOutWidget from "../fidelity/Trade/TradePopOutWidget";
-import BalanceSheetWidget from "../fidelity/Portfolio/BalanceSheetWidget";
-import BalanceSidebarWidget from "../fidelity/Portfolio/BalanceSidebarWidget";
-import PlanningSummaryWidget from "../fidelity/Plan/PlanningSummaryWidget";
+import BalanceSheetWidget from "../fidelity/Portfolio/Balance/BalanceSheetWidget";
+import BalanceSidebarWidget from "../fidelity/Portfolio/Balance/BalanceSidebarWidget";
+import PlanningSummaryWidget from "../fidelity/Portfolio/Plan/PlanningSummaryWidget";
 
 /**
  * There are two exported objects used in conjunction to load the correct widget(s) for a given URL.

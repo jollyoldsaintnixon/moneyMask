@@ -87,7 +87,7 @@ All classes are kept in the top level "classes" directory. Subdirectories within
 │   │   ├── BalanceSheetWidget.js
 │   │   ├── BalanceSidebarWidget.js
 │   │   ├── PanelIraWidget.js
-│   │   ├── PanelTotalWidget.js
+│   │   ├── PanelGraphWidget.js
 │   │   ├── PortfolioSidebarWidget.js
 │   │   └── PositionsRowWidget.js
 │   └── Trade // widget pertaining to the trade part of the Fidelity domain
@@ -104,5 +104,7 @@ Testing is done with Jest. To test, run `npm run test`.
 
 ## Bugs & Caveats
 * Sometimes "cuts out" after period of inactivity
+* The "Balance at Fidelity" panel widget does not update the proportional mask value when moving along the graph. It holds the value constant at the total portfolio mask value.
+* There are very likely features, pages, account types, and etc. that I do not have access to. I could only modify what I can see from my end. 
 * Still very much a work in progress- only works on certain parts of the Fidelity site.
 * Please do no try to make a trade will the mask is up. The extension should disable the ability to do so on trade pages where it is running, but just in case it fails please make sure you take the mask down first. I am sure you want to see the real values before making any trade.

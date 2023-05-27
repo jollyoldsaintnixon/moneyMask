@@ -4,13 +4,13 @@ import {
     toGainDollars,
     arrayToList
 } from "../../../helpers";
-import WidgetBase from "../../../WidgetBase";
+import WidgetBase from "../../../Base/WidgetBase";
+import WatchesDistalAncestorTrait from "../../../Base/Traits/WatchesDistalAncestorTrait";
 
 /**
  * This class targets a particular "square" in the summary panel that shows 
  * the total value of all accounts. It is a secondary widget because changes
  * are determined by changes in a node outside of its scope.
- * TODO: I need to add a listener that updates the graph labels whenever one of the four graphs is first clicked. They do not load until clicked the first time, and there is a delay.
  */
 export default class PanelGraphWidget extends WidgetBase 
 {
@@ -32,6 +32,7 @@ export default class PanelGraphWidget extends WidgetBase
     {
         super(maskValue, isMaskOn);
         this.maskGainNode = this.maskGainNode.bind(this);
+        this.traits.push(new WatchesDistalAncestorTrait(this, "summary-panel"));
         this.watchForCommonAncestor();
 
     }
@@ -288,7 +289,7 @@ export default class PanelGraphWidget extends WidgetBase
             for (const mutation of mutations)
             {
                 if ((mutation.addedNodes.length && (mutation.type === 'childList' || mutation.type === 'subtree'))
-                && this.getGraphNode(mutation.addedNodes)) // only proc if graph node is within the addedNodes
+                && WidgetBase.getNodes(mutation.addedNodes, this.graphSelector)) // only proc if graph node is within the addedNodes
                 { 
                     _onFoundLogic();
                 } 

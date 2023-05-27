@@ -1,4 +1,5 @@
-import WidgetBase from "../../../WidgetBase";
+import WatchesDistalAncestorTrait from "../../../Base/Traits/WatchesDistalAncestorTrait";
+import WidgetBase from "../../../Base/WidgetBase";
 import { 
     stripToNumber, 
     toDollars,
@@ -13,8 +14,6 @@ import {
 export default class PositionsRowWidget extends WidgetBase
 {
     commonAncestorSelector = ".ag-body-viewport"
-    distalAncestorSelector = ".positions-content-container"; // this is the ancestor that is removed when the user switches accounts. We watch for this to re-mask.
-    distalAncestorNode = null;
     securityRowsSelector = ".ag-center-cols-container > div.ag-row:not(.ag-row-first, .posweb-row-spacer)"; // this will return a series of security rows. Different nodes within each row will be masked based on the percent of the total account represented by each security.
     securityRowNodes = arrayToList([]); // this will be a list of nodes that represent each security row
     percentOfAccountSelector = ".posweb-cell-account_percent > div:first-child > span:first-child"; // this is the percent of the account represented by the security
@@ -33,6 +32,7 @@ export default class PositionsRowWidget extends WidgetBase
     constructor(maskValue = 100, isMaskOn = false) 
     {
         super(maskValue, isMaskOn);
+        this.traits.push(new WatchesDistalAncestorTrait(this, ".positions-content-container"));
         this.watchForCommonAncestor();
     }
 
@@ -160,10 +160,12 @@ export default class PositionsRowWidget extends WidgetBase
     /**
      * All we have to mask here is the grand total's current value. The rest is handled in the general security row masking.
      * The grandTotalMaskValue is recalculated each time putMaskUp is called. It is essentially the number of accounts * maskValue.
+     * However, if 0 was passed in, we default to the maskValue. This is a hacky way to handle the account total on individual accounts.
      * @param {int|float} grandTotalMaskValue 
      */
     maskGrandTotalRow(grandTotalMaskValue)
     {
+        grandTotalMaskValue = grandTotalMaskValue || this.maskValue; // if it is 0, default to the maskValue
         WidgetBase.maskUp(this.getGrandTotalCurrentValue(), toDollars(grandTotalMaskValue));
     }
 
@@ -197,21 +199,11 @@ export default class PositionsRowWidget extends WidgetBase
         return currentValueNode;
     }
 
-    getDistalAncestorNode()
-    {
-        if (!WidgetBase.isConnected(this.distalAncestorNode))
-        {
-            this.distalAncestorNode = WidgetBase.getNodes(document, this.distalAncestorSelector);
-        }
-        return this.distalAncestorNode;
-    }
-
     /******************** WATCHERS **********************/
     
     activateWatchers()
     {
         this.watchForSecurityRows();
-        this.watchForAccountSwap();
     }
 
     /**
@@ -244,38 +236,6 @@ export default class PositionsRowWidget extends WidgetBase
         {
             this.observers.securityRows = WidgetBase.createObserver(this.getCommonAncestorNode(), _watchLogic);
         }
-    }
-
-    /**
-     * When the user switches from account to account, a history update is not triggered. We need to therefore watch for the account swap and re-watch for commonAncestor.
-     * Tries to run immediately.
-     * Does not disconnect. Will short circuit if observer already exists.
-     */
-    watchForAccountSwap()
-    {
-        if (!this.observers.accountSwap)
-        {
-            const _onRemovedLogic = () => {
-                this.watchForCommonAncestor();
-            };
-            const _watchLogic = (mutations) => {
-                for (const mutation of mutations) 
-                {
-                    if (mutation.removedNodes.length && !WidgetBase.isConnected(this.getCommonAncestorNode()))
-                    {
-                        _onRemovedLogic();
-                        this.tryDisconnect("accountSwap")
-                        break;
-                    }
-                }
-            };
-            if (!WidgetBase.isConnected(this.getCommonAncestorNode())) // common ancestor was already removed
-            {
-                _onRemovedLogic();
-            }
-                this.observers.accountSwap = WidgetBase.createObserver(this.getDistalAncestorNode(), _watchLogic);
-        }
-        // }
     }
 
     /**

@@ -1,4 +1,4 @@
-import WidgetBase from "../../../WidgetBase";
+import WidgetBase from "../../../Base/WidgetBase";
 import { 
     stripToNumber,
     toDollars,

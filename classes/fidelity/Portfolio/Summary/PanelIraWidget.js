@@ -2,7 +2,8 @@ import {
     stripToNumber,
     toDollars,
  } from "../../../helpers";
-import WidgetBase from "../../../WidgetBase";
+import WidgetBase from "../../../Base/WidgetBase";
+import WatchesDistalAncestorTrait from "../../../Base/Traits/WatchesDistalAncestorTrait";
 
 /**
  * This is a panel widget that shows how much the user can contribute to their IRA.
@@ -22,6 +23,7 @@ export default class PanelIraWidget extends WidgetBase
     constructor(maskValue = 100, isMaskOn = false) 
     {
         super(maskValue, isMaskOn);
+        this.traits.push(new WatchesDistalAncestorTrait(this, "summary-panel"));
         this.watchForCommonAncestor();
     }
 

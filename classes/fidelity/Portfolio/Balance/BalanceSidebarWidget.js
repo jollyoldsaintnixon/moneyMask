@@ -1,5 +1,5 @@
 import { toGainDollars } from "../../../helpers.js";
-import WidgetBase from "../../../WidgetBase.js";
+import WidgetBase from "../../../Base/WidgetBase.js";
 import PortfolioSidebarWidget from "../PortfolioSidebarWidget.js";
 
 /**

@@ -3,7 +3,7 @@ import {
     toDollars,
     toGainDollars
  } from "../../../helpers.js";
-import WidgetBase from "../../../WidgetBase.js";
+import WidgetBase from "../../../Base/WidgetBase.js";
 
 /**
  * This class represents the account balance tab within the portfolio

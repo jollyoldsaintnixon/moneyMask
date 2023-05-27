@@ -2,7 +2,7 @@ import {
     stripToNumber, 
     toDollars, 
 } from "../../helpers.js";
-import WidgetBase from "../../WidgetBase.js";
+import WidgetBase from "../../Base/WidgetBase.js";
 /** This widget represents the "pop out" sidebar trade menu. It can be accessed though a security row listed in the portfolio positions tab, or by clicking the "Trade" button located immediately below the "Accounts & Trade" button when in the portofolio section of the site. 
  * 
  * ! overwrites watchForCommonAncestor

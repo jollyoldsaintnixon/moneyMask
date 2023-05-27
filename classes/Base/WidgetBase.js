@@ -1,7 +1,7 @@
 import {
     stripToNumber,
     applyToSingleElemOrList
- } from "./helpers";
+ } from "../helpers";
 
 export default class WidgetBase 
 {
@@ -25,6 +25,8 @@ export default class WidgetBase
 
     observers = { // whenever observers are added by the widget, ensure they are stored here so they can be disconnected later. Key is the string name of the observer, value is the observer itself.
     }
+
+    traits = []; // list of traits that the widget has. should be used in the widget's constructor by instantiating the trait inside this array. this is really used only to document the traits that the widget has so it is more clear why we are instantiating other classes inside the widget's constructor.
 
     constructor(maskValue = 100, isMaskOn = false) // ! each child should define its own constructor and call this.watchForCommonAncestor() after super.
     {
