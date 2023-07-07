@@ -57,6 +57,7 @@ export default class WatchesDistalAncestorTrait extends BaseTrait
                     if (mutation.removedNodes.length 
                         && !WidgetBase.isConnected(this.commonAncestorNode))
                     {
+                        this.tryDisconnect("commonAncestorRemoval");
                         _onRemovedLogic();
                         break;
                     }

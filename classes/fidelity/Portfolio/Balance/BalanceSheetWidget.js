@@ -4,6 +4,7 @@ import {
     toGainDollars
  } from "../../../helpers.js";
 import WidgetBase from "../../../Base/WidgetBase.js";
+import WatchesDistalAncestorTrait from "../../../Base/Traits/WatchesDistalAncestorTrait.js";
 
 /**
  * This class represents the account balance tab within the portfolio
@@ -23,16 +24,50 @@ export default class BalanceSheetWidget extends WidgetBase
     constructor(maskValue = 100, isMaskOn = false) 
     {
         super(maskValue, isMaskOn);
+        ".page-content page-content--portfolio-summary"
+        this.traits.push(new WatchesDistalAncestorTrait(this, ".page-content.page-content--portfolio-summary"));
         this.watchForCommonAncestor();
     }
     /************************ MASKERS ***********************/
 
     putMaskUp()
     {
+        switch (this.determineViewType()) 
+        {
+            case "portfolio":
+                this.maskPortfolioAccount();
+                break;
+            case "margin":
+                this.maskMarginAccount();
+                break;
+            case "non-margin":
+                this.maskNonMarginAccount();
+                break;
+            default:
+                break;
+        }
+        // this.maskAccountTotals();
+        // this.getAccountTotalNodes().forEach(totalNode => this.maskGains(totalNode)); // mask each account's gain
+        // this.maskPortfolioTotal();
+        // this.maskGains(this.getPortfolioTotalNode()); // mask the portfolio gain too
+    }
+
+    maskPortfolioAccount()
+    {
         this.maskAccountTotals();
         this.getAccountTotalNodes().forEach(totalNode => this.maskGains(totalNode)); // mask each account's gain
         this.maskPortfolioTotal();
         this.maskGains(this.getPortfolioTotalNode()); // mask the portfolio gain too
+    }
+
+    maskMarginAccount()
+    {
+
+    }
+
+    maskNonMarginAccount()
+    {
+
     }
 
     maskAccountTotals()
@@ -63,8 +98,30 @@ export default class BalanceSheetWidget extends WidgetBase
 
     resetNodes()
     {
+        switch (this.determineViewType()) 
+        {
+            case "portfolio":
+                this.resetPortfolioAccount();
+                break;
+            case "margin":
+                this.resetMarginAccount();
+                break;
+            case "non-margin":
+                this.resetNonMarginAccount();
+                break;
+            default:
+                break;
+        }
+        // this.resetAccountTotals();
+        // this.getAccountTotalNodes().forEach(totalNode => this.resetGain(totalNode)); 
+        // this.resetPortfolioTotal();
+        // this.resetGain(this.getPortfolioTotalNode()); // reset the portfolio gain too
+    }
+
+    resetPortfolioAccount()
+    {
         this.resetAccountTotals();
-        this.getAccountTotalNodes().forEach(totalNode => this.resetGain(totalNode)); // mask each account's gain
+        this.getAccountTotalNodes().forEach(totalNode => this.resetGain(totalNode)); // reset each account's gain
         this.resetPortfolioTotal();
         this.resetGain(this.getPortfolioTotalNode()); // reset the portfolio gain too
     }
@@ -171,5 +228,20 @@ export default class BalanceSheetWidget extends WidgetBase
         {
             this.observers.accountTotals = WidgetBase.createObserver(this.getCommonAncestorNode(), _watchLogic);
         }
+    }
+
+    /******************** HELPERS **********************/
+
+    /**
+     * Determine whether the view type, ie the whole portfolio, a margin account, or a non-margin account.
+     * I do this based off of a count of a semi-arbitrary node type that has a different count for each view type (so far as I can tell).
+     * @returns {String} "portfolio", "margin", or "non-margin"
+     */
+    determineViewType()
+    {
+        const count = document.querySelectorAll('.balances--item-head-container').length;
+        if (count === 0) return "portfolio";
+        if (count < 20) return "non-margin";
+        return "margin";
     }
 }
