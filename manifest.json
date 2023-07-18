@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "MoneyMask",
   "description": "Conceals the value of your brokerage accounts so that you can share your screen without shame.",
-  "version": "1.0",
+  "version": "1.1",
   "action": {
     "default_popup": "popUp/popUp.html",
     "default_icon": {

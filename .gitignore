@@ -3,3 +3,6 @@ dist
 WidgetSearcher.js
 notes.md
 .vscode
+scripts/
+tests/
+.env
